@@ -1,0 +1,32 @@
+{
+  "name": "regex-recursion",
+  "version": "1.0.0",
+  "description": "Recursive matching extension for tag regex",
+  "exports": "./src/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/index.js --bundle --minify --sourcemap --outfile=dist/regex-recursion.min.js --global-name=Regex.ext",
+    "pretest": "npm run build",
+    "test": "jasmine",
+    "prepublish": "npm test"
+  },
+  "author": "Steven Levithan",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/slevithan/regex-recursion.git"
+  },
+  "keywords": [
+    "recursion",
+    "regex",
+    "regexp"
+  ],
+  "dependencies": {
+    "regex": "^1.1.1",
+    "regex-utilities": "^1.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.21.4",
+    "jasmine": "^5.1.0"
+  }
+}
