@@ -4,16 +4,16 @@ import {Context, hasUnescaped, replaceUnescaped} from 'regex-utilities';
 export function rregex(first, ...values) {
   const postprocessors = (first?.postprocessors || []).concat(recursion);
   // Allow binding to other constructors
-  const constructor = this instanceof Function ? this : RegExp;
+  const tag = this instanceof Function ? regex.bind(this) : regex;
   // Given a template
   if (Array.isArray(first?.raw)) {
-    return regex.bind(constructor)({flags: '', postprocessors})(first, ...values);
+    return tag({flags: '', postprocessors})(first, ...values);
   // Given flags
   } else if ((typeof first === 'string' || first === undefined) && !values.length) {
-    return regex.bind(constructor)({flags: first, postprocessors});
+    return tag({flags: first, postprocessors});
   // Given an options object
   } else if ({}.toString.call(first) === '[object Object]' && !values.length) {
-    return regex.bind(constructor)({...first, postprocessors});
+    return tag({...first, postprocessors});
   }
   throw new Error(`Unexpected arguments: ${JSON.stringify([first, ...values])}`);
 }

@@ -7,7 +7,7 @@ You can add recursion to a regex pattern via one of the following:
 - `(?R=N)` — Recursively match the entire pattern at this position.
 - `\g<name&R=N>` — Recursively match the contents of group *name* at this position. The `\g` subroutine must be used within the referenced group.
 
-Any backreferences are unique per depth level.
+Backreferences are unique per depth level, so e.g. the value of `groups.name` on a `RegExp` match array always refers to the value captured by group `name` at the top level of the stack.
 
 ## Examples
 
@@ -21,7 +21,7 @@ rregex`a(?R=50)?b`.exec('test aaaaaabbb')[0];
 // → 'aaabbb'
 ```
 
-Match an equal number of two different patterns, as the whole string:
+Match an equal number of two different patterns, as the entire string:
 
 ```js
 const re = rregex`
@@ -53,8 +53,8 @@ const parens = rregex('g')`\(
 Match palindromes:
 
 ```js
-const palindromes = rregex('gi')`(?<char>\w) ((?R=10)|\w?) \k<char>`;
-// Palindrome maxlength: 21 = 2 chars (left+right) × depth 10 + 1 in the center
+const palindromes = rregex('gi')`(?<char>\w) ((?R=15)|\w?) \k<char>`;
+// Palindrome max length: 31 = 2 chars (left + right) × depth 15 + 1 in center
 
 'Racecar, ABBA, and redivided'.match(palindromes);
 // → ['Racecar', 'ABBA', 'edivide']
@@ -66,9 +66,9 @@ Match palindromes as complete words:
 const palindromeWords = rregex('gi')`
   \b
   (?<palindrome>
-    (?<char>\w)
+    (?<char> \w )
     # Recurse, or match a lone unbalanced char in the center
-    ( \g<palindrome&R=10> | \w? )
+    ( \g<palindrome&R=15> | \w? )
     \k<char>
   )
   \b
@@ -80,7 +80,7 @@ const palindromeWords = rregex('gi')`
 
 ## Sugar free
 
-Template tag `rregex` is sugar for applying recursion support via a postprocessor with tag `regex`. You can also add recursion support the verbose way:
+Template tag `rregex` is sugar for using tag `regex` and applying recursion support via a postprocessor. You can also add recursion support the verbose way:
 
 ```js
 import {regex} from 'regex';

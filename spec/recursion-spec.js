@@ -6,7 +6,7 @@ describe('recursion', () => {
     expect(rregex`a(?R=50)?b`.exec('test aaaaaabbb')[0]).toBe('aaabbb');
   });
 
-  it('should match an equal number of two different patterns, as the whole string', () => {
+  it('should match an equal number of two different patterns, as the entire string', () => {
     const re = rregex`
       ^
       (?<balanced>
@@ -29,7 +29,7 @@ describe('recursion', () => {
   });
 
   it('should match palindromes', () => {
-    const palindromes = rregex('gi')`(?<char>\w) ((?R=10)|\w?) \k<char>`;
+    const palindromes = rregex('gi')`(?<char>\w) ((?R=15)|\w?) \k<char>`;
     expect('Racecar, ABBA, and redivided'.match(palindromes)).toEqual(['Racecar', 'ABBA', 'edivide']);
   });
 
@@ -37,9 +37,9 @@ describe('recursion', () => {
     const palindromeWords = rregex('gi')`
       \b
       (?<palindrome>
-        (?<char>\w)
+        (?<char> \w )
         # Recurse, or match a lone unbalanced char in the center
-        ( \g<palindrome&R=10> | \w? )
+        ( \g<palindrome&R=15> | \w? )
         \k<char>
       )
       \b
