@@ -24,12 +24,12 @@ export function recursion(pattern) {
   let match;
   token.lastIndex = 0;
   while (match = token.exec(pattern)) {
-    const {0: m, groups: {capGroupName, rDepth, gRName, gRDepth}} = match;
+    const {0: m, groups: {capturingGroupName, rDepth, gRName, gRDepth}} = match;
     if (m === '[') {
       numCharClassesOpen++;
     } else if (!numCharClassesOpen) {
-      if (capGroupName) {
-        groupContentsStartPos[capGroupName] = token.lastIndex;
+      if (capturingGroupName) {
+        groupContentsStartPos[capturingGroupName] = token.lastIndex;
       // (?R=N)
       } else if (rDepth) {
         const maxDepth = +rDepth;
@@ -43,13 +43,13 @@ export function recursion(pattern) {
         const maxDepth = +gRDepth;
         assertMaxInBounds(maxDepth);
         const outsideOwnGroupMsg = `Recursion via \\g<${gRName}> must be within the referenced group`;
-        // Appears before/outside group
+        // Appears before/outside the referenced group
         if (!Object.hasOwn(groupContentsStartPos, gRName)) {
           throw new Error(outsideOwnGroupMsg);
         }
         const recursiveGroupContents = getContentsOfGroup(pattern, groupContentsStartPos[gRName]);
-        // Appears after/outside group
-        if (!hasUnescaped(recursiveGroupContents, gToken, Context.DEFAULT)) {
+        // Appears after/outside the referenced group
+        if (!hasUnescaped(recursiveGroupContents, gRToken, Context.DEFAULT)) {
           throw new Error(outsideOwnGroupMsg)
         }
         const pre = pattern.slice(groupContentsStartPos[gRName], match.index);
@@ -67,9 +67,9 @@ export function recursion(pattern) {
   return pattern;
 }
 
-const gToken = String.raw`\\g<(?<gRName>[^>&]+)&R=(?<gRDepth>\d+)>`;
-const recursiveToken = String.raw`\(\?R=(?<rDepth>\d+)\)|${gToken}`;
-const token = new RegExp(String.raw`\(\?<(?![=!])(?<capGroupName>[^>]+)>|${recursiveToken}|\\?.`, 'gsu');
+const gRToken = String.raw`\\g<(?<gRName>[^>&]+)&R=(?<gRDepth>\d+)>`;
+const recursiveToken = String.raw`\(\?R=(?<rDepth>\d+)\)|${gRToken}`;
+const token = new RegExp(String.raw`\(\?<(?![=!])(?<capturingGroupName>[^>]+)>|${recursiveToken}|\\?.`, 'gsu');
 
 function assertMaxInBounds(max) {
   if (max < 2 || max > 100) {
@@ -112,6 +112,11 @@ function getContentsOfGroup(pattern, contentsStartPos) {
   return pattern.slice(contentsStartPos, contentsEndPos);
 }
 
+// Note: Not adjusting numbered backrefs to continue working given the additional capturing groups
+// added (if any). This is mostly a non-issue since the implicit flag n from tag `regex` prevents
+// unnamed capturing groups and numbered backrefs. However, numbered backrefs can appear in
+// interpolated regexes. They could be adjusted with extra effort, by tracking the running number
+// of named/unnamed captures added and rewriting each numbered backref encountered along the way
 function makeRecursive(pre, post, maxDepth) {
   const reps = maxDepth - 1;
   // Depth 2: 'pre(?:pre(?:)post)post'
@@ -121,15 +126,16 @@ function makeRecursive(pre, post, maxDepth) {
 
 function repeatWithDepth(pattern, reps, direction = 'forward') {
   const startNum = 2;
-  const value = i => direction === 'backward' ? reps - i + startNum - 1 : i + startNum;
+  const depthNum = i => direction === 'backward' ? reps - i + startNum - 1 : i + startNum;
   let result = '';
   for (let i = 0; i < reps; i++) {
-    const captureNum = value(i);
+    const captureNum = depthNum(i);
     result += replaceUnescaped(
       pattern,
       String.raw`\(\?<(?<captureName>[^>]+)>|\\k<(?<backref>[^>]+)>`,
       ({groups: {captureName, backref}}) => {
-        return captureName ? `(?<${captureName}$r${captureNum}>` : `\\k<${backref}$r${captureNum}>`;
+        const suffix = `_$${captureNum}`;
+        return captureName ? `(?<${captureName}${suffix}>` : `\\k<${backref}${suffix}>`;
       },
       Context.DEFAULT
     );
