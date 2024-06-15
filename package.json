@@ -26,11 +26,11 @@
     "regexp"
   ],
   "dependencies": {
-    "regex": "^1.1.1",
-    "regex-utilities": "^1.0.0"
+    "regex": "^2.0.0",
+    "regex-utilities": "^2.0.0"
   },
   "devDependencies": {
-    "esbuild": "^0.21.4",
+    "esbuild": "^0.21.5",
     "jasmine": "^5.1.0"
   }
 }
