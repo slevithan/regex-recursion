@@ -19,6 +19,9 @@ export function rregex(first, ...values) {
 }
 
 export function recursion(pattern) {
+  if (!hasUnescaped(pattern, recursiveToken, Context.DEFAULT)) {
+    return pattern;
+  }
   const groupContentsStartPos = {};
   let numCharClassesOpen = 0;
   let match;
