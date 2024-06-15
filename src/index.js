@@ -1,5 +1,5 @@
 import {regex} from 'regex';
-import {Context, hasUnescaped, replaceUnescaped} from 'regex-utilities';
+import {Context, getGroupContents, hasUnescaped, replaceUnescaped} from 'regex-utilities';
 
 export function rregex(first, ...values) {
   const postprocessors = (first?.postprocessors || []).concat(recursion);
@@ -47,7 +47,7 @@ export function recursion(pattern) {
         if (!Object.hasOwn(groupContentsStartPos, gRName)) {
           throw new Error(outsideOwnGroupMsg);
         }
-        const recursiveGroupContents = getContentsOfGroup(pattern, groupContentsStartPos[gRName]);
+        const recursiveGroupContents = getGroupContents(pattern, groupContentsStartPos[gRName]);
         // Appears after/outside the referenced group
         if (!hasUnescaped(recursiveGroupContents, gRToken, Context.DEFAULT)) {
           throw new Error(outsideOwnGroupMsg)
@@ -81,35 +81,6 @@ function assertNoFollowingRecursion(remainingPattern) {
   if (hasUnescaped(remainingPattern, recursiveToken, Context.DEFAULT)) {
     throw new Error('Cannot use recursion more than once in a pattern');
   }
-}
-
-function getContentsOfGroup(pattern, contentsStartPos) {
-  const token = /(?<groupStart>\(\?[:=!<>A-Za-z\-])|\\?./gsu;
-  token.lastIndex = contentsStartPos;
-  let contentsEndPos = pattern.length;
-  let numCharClassesOpen = 0;
-  // Starting search within an open group, after the group's opening
-  let numGroupsOpen = 1;
-  let match;
-  while (match = token.exec(pattern)) {
-    const {0: m, groups: {groupStart}} = match;
-    if (m === '[') {
-      numCharClassesOpen++;
-    } else if (!numCharClassesOpen) {
-      if (groupStart) {
-        numGroupsOpen++;
-      } else if (m === ')') {
-        numGroupsOpen--;
-        if (!numGroupsOpen) {
-          contentsEndPos = match.index;
-          break;
-        }
-      }
-    } else if (m === ']') {
-      numCharClassesOpen--;
-    }
-  }
-  return pattern.slice(contentsStartPos, contentsEndPos);
 }
 
 // Note: Not adjusting numbered backrefs to continue working given the additional capturing groups
