@@ -7,7 +7,7 @@ You can add recursion to a regex pattern via one of the following:
 - `(?R=N)` — Recursively match the entire pattern at this position.
 - `\g<name&R=N>` — Recursively match the contents of group *name* at this position. The `\g` subroutine must be used within the referenced group.
 
-Backreferences are unique per depth level, so e.g. the value of `groups.name` on a `RegExp` match array always refers to the value captured by group `name` at the top level of the stack.
+Recursion supports named captures/backreferences, and makes them independent per depth level. So e.g. `groups.name` on a `RegExp` match array is the value captured by group `name` at the top level of the recursion stack.
 
 ## Examples
 
