@@ -51,15 +51,16 @@ const parens = rregex('g')`\(
 'test (balanced ((parens))) ) () ((a)) ((b)'.match(parens);
 // → ['(balanced ((parens)))', '()', '((a))', '(b)']
 
+// ----------
 // Here's an alternative that matches the same strings
 const parens = rregex('g')`\(
   ( (?> [^\(\)]+ ) | (?R=50) )*
 \)`;
-// This matches stretches of non-parens in one step with the `+` quantifier,
-// and avoids backtracking into sequences of non-parens using an atomic group
-// `(?>…)`. Given the nested quantifier, the atomic group is important to avoid
-// runaway backtracking when matching long strings with unbalanced parens.
-// Atomic groups are provided by the base `regex` package
+// This matches sequences of non-parens in one step with the `+` quantifier,
+// and avoids backtracking into these sequences by using an atomic group
+// `(?>…)`. Given the nested quantifier, the atomic group is important here.
+// It avoids runaway backtracking when matching long strings with unbalanced
+// parens. Atomic groups are provided by the base `regex` package
 ```
 
 Match palindromes:
@@ -105,7 +106,7 @@ regex({flags: 'i', postprocessors: [recursion]})`a(?R=2)?b`;
 
 ## Install and use
 
-```bash
+```sh
 npm install regex-recursion
 ```
 
