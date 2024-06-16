@@ -53,4 +53,14 @@ describe('recursion', () => {
   it('should allow directly using recursion as a postprocessor with tag regex', () => {
     expect('aAbb').toMatch(regex({flags: 'i', postprocessors: [recursion]})`a(?R=2)?b`);
   });
+
+  // Just documenting current behavior; this could be supported in the future
+  it('should not allow numbered backreferences in interpolated regexes when using recursion', () => {
+    expect(() => rregex`a(?R=2)?b${/()\1/}`).toThrow();
+    expect(() => rregex`(?<n>a|\g<n&R=2>${/()\1/})`).toThrow();
+    expect(() => rregex`(?<n>a|\g<n&R=2>)${/()\1/}`).toThrow();
+    expect(() => rregex`${/()\1/}a(?R=2)?b`).toThrow();
+    expect(() => rregex`(?<n>${/()\1/}a|\g<n&R=2>)`).toThrow();
+    expect(() => rregex`${/()\1/}(?<n>a|\g<n&R=2>)`).toThrow();
+  });
 });

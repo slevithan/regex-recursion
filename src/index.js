@@ -30,6 +30,15 @@ export function recursion(pattern) {
   if (!hasUnescaped(pattern, recursiveToken, Context.DEFAULT)) {
     return pattern;
   }
+  if (hasUnescaped(pattern, String.raw`\\[1-9]`, Context.DEFAULT)) {
+    // Could allow this with extra effort but it's probably not worth it. To trigger this, the
+    // regex must contain both recursion and an interpolated regex with a numbered backref (since
+    // numbered backrefs outside regex interpolation are prevented by implicit flag n). Note that
+    // some of `regex`'s built-in features (atomic groups and subroutines) can add numbered
+    // backrefs. However, those work fine with recursion because postprocessors from extensions
+    // (like `regex-recursion`) run before built-in postprocessors
+    throw new Error(`Invalid decimal escape in interpolated regex; cannot be used with recursion`);
+  }
   const groupContentsStartPos = {};
   let numCharClassesOpen = 0;
   let match;
@@ -100,11 +109,6 @@ function assertNoFollowingRecursion(remainingPattern) {
 @returns {string}
 */
 function makeRecursive(pre, post, maxDepth) {
-// Note: Not adjusting numbered backrefs to continue working given the additional capturing groups
-// added (if any). This is mostly a non-issue since the implicit flag n from tag `regex` prevents
-// unnamed capturing groups and numbered backrefs. However, numbered backrefs can appear in
-// interpolated regexes. They could be adjusted with extra effort, by tracking the running number
-// of named/unnamed captures added and rewriting each numbered backref encountered along the way
   const reps = maxDepth - 1;
   // Depth 2: 'pre(?:pre(?:)post)post'
   // Depth 3: 'pre(?:pre(?:pre(?:)post)post)post'
