@@ -18,6 +18,14 @@ export function rregex(first, ...values) {
   throw new Error(`Unexpected arguments: ${JSON.stringify([first, ...values])}`);
 }
 
+const gRToken = String.raw`\\g<(?<gRName>[^>&]+)&R=(?<gRDepth>\d+)>`;
+const recursiveToken = String.raw`\(\?R=(?<rDepth>\d+)\)|${gRToken}`;
+const token = new RegExp(String.raw`\(\?<(?![=!])(?<capturingGroupName>[^>]+)>|${recursiveToken}|\\?.`, 'gsu');
+
+/**
+@param {string} pattern
+@returns {string}
+*/
 export function recursion(pattern) {
   if (!hasUnescaped(pattern, recursiveToken, Context.DEFAULT)) {
     return pattern;
@@ -70,10 +78,9 @@ export function recursion(pattern) {
   return pattern;
 }
 
-const gRToken = String.raw`\\g<(?<gRName>[^>&]+)&R=(?<gRDepth>\d+)>`;
-const recursiveToken = String.raw`\(\?R=(?<rDepth>\d+)\)|${gRToken}`;
-const token = new RegExp(String.raw`\(\?<(?![=!])(?<capturingGroupName>[^>]+)>|${recursiveToken}|\\?.`, 'gsu');
-
+/**
+@param {number} max
+*/
 function assertMaxInBounds(max) {
   if (max < 2 || max > 100) {
     throw new Error(`Max depth must be between 2 and 100; used ${max}`);
@@ -86,18 +93,30 @@ function assertNoFollowingRecursion(remainingPattern) {
   }
 }
 
+/**
+@param {string} pre
+@param {string} post
+@param {number} maxDepth
+@returns {string}
+*/
+function makeRecursive(pre, post, maxDepth) {
 // Note: Not adjusting numbered backrefs to continue working given the additional capturing groups
 // added (if any). This is mostly a non-issue since the implicit flag n from tag `regex` prevents
 // unnamed capturing groups and numbered backrefs. However, numbered backrefs can appear in
 // interpolated regexes. They could be adjusted with extra effort, by tracking the running number
 // of named/unnamed captures added and rewriting each numbered backref encountered along the way
-function makeRecursive(pre, post, maxDepth) {
   const reps = maxDepth - 1;
   // Depth 2: 'pre(?:pre(?:)post)post'
   // Depth 3: 'pre(?:pre(?:pre(?:)post)post)post'
   return `${pre}${repeatWithDepth(`(?:${pre}`, reps)}(?:)${repeatWithDepth(`${post})`, reps, 'backward')}${post}`;
 }
 
+/**
+@param {string} pattern
+@param {number} reps
+@param {'forward' | 'backward'} [direction]
+@returns {string}
+ */
 function repeatWithDepth(pattern, reps, direction = 'forward') {
   const startNum = 2;
   const depthNum = i => direction === 'backward' ? reps - i + startNum - 1 : i + startNum;

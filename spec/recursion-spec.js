@@ -7,23 +7,28 @@ describe('recursion', () => {
   });
 
   it('should match an equal number of two different patterns, as the entire string', () => {
-    const re = rregex`
-      ^
+    const re = rregex`^
       (?<balanced>
         a
         # Recursively match just the specified group
         \g<balanced&R=50>?
         b
       )
-      $
-    `;
+    $`;
     expect(re.test('aaabbb')).toBeTrue();
     expect(re.test('aaabb')).toBeFalse();
   });
 
   it('should match balanced parentheses', () => {
     const parens = rregex('g')`\(
-      ( [^\(\)] | (?R=10) )*
+      ( [^\(\)] | (?R=50) )*
+    \)`;
+    expect('test (balanced ((parens))) ) () ((a)) ((b)'.match(parens)).toEqual(['(balanced ((parens)))', '()', '((a))', '(b)']);
+  });
+
+  it('should match balanced parentheses using an atomic group', () => {
+    const parens = rregex('g')`\(
+      ( (?> [^\(\)]+ ) | (?R=50) )*
     \)`;
     expect('test (balanced ((parens))) ) () ((a)) ((b)'.match(parens)).toEqual(['(balanced ((parens)))', '()', '((a))', '(b)']);
   });
@@ -34,20 +39,18 @@ describe('recursion', () => {
   });
 
   it('should match palindromes as complete words', () => {
-    const palindromeWords = rregex('gi')`
-      \b
+    const palindromeWords = rregex('gi')`\b
       (?<palindrome>
         (?<char> \w )
         # Recurse, or match a lone unbalanced char in the center
         ( \g<palindrome&R=15> | \w? )
         \k<char>
       )
-      \b
-    `;
+    \b`;
     expect('Racecar, ABBA, and redivided'.match(palindromeWords)).toEqual(['Racecar', 'ABBA']);
   });
 
   it('should allow directly using recursion as a postprocessor with tag regex', () => {
-    expect('aabb').toMatch(regex({flags: 'g', postprocessors: [recursion]})`a(?R=2)?b`);
+    expect('aAbb').toMatch(regex({flags: 'i', postprocessors: [recursion]})`a(?R=2)?b`);
   });
 });
