@@ -39,7 +39,7 @@ export function recursion(pattern) {
     // (like `regex-recursion`) run before built-in postprocessors
     throw new Error(`Invalid decimal escape in interpolated regex; cannot be used with recursion`);
   }
-  const groupContentsStartPos = {};
+  const groupContentsStartPos = new Map();
   let numCharClassesOpen = 0;
   let match;
   token.lastIndex = 0;
@@ -48,8 +48,9 @@ export function recursion(pattern) {
     if (m === '[') {
       numCharClassesOpen++;
     } else if (!numCharClassesOpen) {
+
       if (capturingGroupName) {
-        groupContentsStartPos[capturingGroupName] = token.lastIndex;
+        groupContentsStartPos.set(capturingGroupName, token.lastIndex);
       // (?R=N)
       } else if (rDepth) {
         const maxDepth = +rDepth;
@@ -64,21 +65,23 @@ export function recursion(pattern) {
         assertMaxInBounds(maxDepth);
         const outsideOwnGroupMsg = `Recursion via \\g<${gRName}&R=${gRDepth}> must be used within the referenced group`;
         // Appears before/outside the referenced group
-        if (!Object.hasOwn(groupContentsStartPos, gRName)) {
+        if (!groupContentsStartPos.has(gRName)) {
           throw new Error(outsideOwnGroupMsg);
         }
-        const recursiveGroupContents = getGroupContents(pattern, groupContentsStartPos[gRName]);
+        const startPos = groupContentsStartPos.get(gRName);
+        const recursiveGroupContents = getGroupContents(pattern, startPos);
         // Appears after/outside the referenced group
         if (!hasUnescaped(recursiveGroupContents, gRToken, Context.DEFAULT)) {
           throw new Error(outsideOwnGroupMsg)
         }
-        const pre = pattern.slice(groupContentsStartPos[gRName], match.index);
+        const pre = pattern.slice(startPos, match.index);
         const post = recursiveGroupContents.slice(pre.length + m.length);
         assertNoFollowingRecursion(post);
-        return pattern.slice(0, groupContentsStartPos[gRName]) +
+        return pattern.slice(0, startPos) +
           makeRecursive(pre, post, maxDepth) +
-          pattern.slice(groupContentsStartPos[gRName] + recursiveGroupContents.length);
+          pattern.slice(startPos + recursiveGroupContents.length);
       }
+
     } else if (m === ']') {
       numCharClassesOpen--;
     }
