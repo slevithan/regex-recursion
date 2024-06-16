@@ -86,8 +86,7 @@ export function recursion(pattern) {
       numCharClassesOpen--;
     }
   }
-  // No change
-  return pattern;
+  throw new Error('Unexpected error; recursion was not processed');
 }
 
 /**
