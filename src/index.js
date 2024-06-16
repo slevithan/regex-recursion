@@ -53,7 +53,7 @@ export function recursion(pattern) {
       } else if (gRName) {
         const maxDepth = +gRDepth;
         assertMaxInBounds(maxDepth);
-        const outsideOwnGroupMsg = `Recursion via \\g<${gRName}> must be within the referenced group`;
+        const outsideOwnGroupMsg = `Recursion via \\g<${gRName}&R=${gRDepth}> must be used within the referenced group`;
         // Appears before/outside the referenced group
         if (!Object.hasOwn(groupContentsStartPos, gRName)) {
           throw new Error(outsideOwnGroupMsg);
