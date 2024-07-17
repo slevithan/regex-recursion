@@ -7,7 +7,8 @@
   "type": "module",
   "exports": "./src/index.js",
   "scripts": {
-    "build": "esbuild src/index.js --bundle --minify --sourcemap --outfile=dist/regex-recursion.min.js --global-name=Regex.ext",
+    "prebuild": "rimraf dist",
+    "build": "esbuild src/index.js --bundle --minify --outfile=dist/regex-recursion.min.js --global-name=Regex.ext",
     "pretest": "npm run build",
     "test": "jasmine",
     "prepublish": "npm test"
@@ -30,7 +31,8 @@
     "regex-utilities": "^2.0.0"
   },
   "devDependencies": {
-    "esbuild": "^0.21.5",
-    "jasmine": "^5.1.0"
+    "esbuild": "^0.23.0",
+    "jasmine": "^5.1.0",
+    "rimraf": "^6.0.1"
   }
 }

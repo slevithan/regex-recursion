@@ -122,7 +122,7 @@ function makeRecursive(pre, post, maxDepth) {
 @param {number} reps
 @param {'forward' | 'backward'} [direction]
 @returns {string}
- */
+*/
 function repeatWithDepth(pattern, reps, direction = 'forward') {
   const startNum = 2;
   const depthNum = i => direction === 'backward' ? reps - i + startNum - 1 : i + startNum;
