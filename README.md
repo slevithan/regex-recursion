@@ -1,4 +1,4 @@
-# `regex-recursion`
+# regex-recursion [![npm](https://img.shields.io/npm/v/regex-recursion)](https://www.npmjs.com/package/regex-recursion)
 
 This is an extension for the [`regex`](https://github.com/slevithan/regex) package that adds support for matching recursive patterns up to a specified max depth *N*, where *N* must be 2–100.
 
