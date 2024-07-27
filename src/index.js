@@ -40,6 +40,9 @@ export function recursion(expression) {
     // (like `regex-recursion`) run before built-in postprocessors
     throw new Error(`Invalid decimal escape in interpolated regex; cannot be used with recursion`);
   }
+  if (hasUnescaped(expression, String.raw`\(\?\(DEFINE\)`, Context.DEFAULT)) {
+    throw new Error(`Definition groups cannot be used with recursion`);
+  }
   const groupContentsStartPos = new Map();
   let numCharClassesOpen = 0;
   let match;
