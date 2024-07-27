@@ -1,31 +1,48 @@
 # regex-recursion [![npm](https://img.shields.io/npm/v/regex-recursion)](https://www.npmjs.com/package/regex-recursion)
 
-This is an extension for the [`regex`](https://github.com/slevithan/regex) package that adds support for recursive matching up to a specified max depth *N*, where *N* must be between 2 and 100.
+This is an extension for the [`regex`](https://github.com/slevithan/regex) package that adds support for recursive matching up to a specified max depth *N*, where *N* must be between 2 and 100. Generated regexes are native `RegExp` instances, and support all JavaScript regular expression features.
 
 Recursive matching is added to a regex via one of the following:
 
 - `(?R=N)` — Recursively match the entire regex at this position.
 - `\g<name&R=N>` — Recursively match the contents of group *name* at this position. The `\g` subroutine must be called *within* the referenced group.
 
-Recursive matching supports named captures and backreferences, and makes them independent per depth level. So e.g. `groups.name` on a `RegExp` match array is the value captured by group `name` at the top level of the recursion stack.
+Recursive matching supports named captures/backreferences, and makes them independent per depth level. So e.g. `groups.name` on a match object is the value captured by group `name` at the top level of the recursion stack.
 
-## Examples
+## Install and use
 
-Match an equal number of two different subpatterns:
+```sh
+npm install regex-recursion
+```
 
 ```js
 import {rregex} from 'regex-recursion';
+```
 
+In browsers:
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/regex-recursion/dist/regex-recursion.min.js"></script>
+<script>
+  const {rregex} = Regex.ext;
+</script>
+```
+
+## Examples
+
+### Match an equal number of two different subpatterns
+
+#### Anywhere within a string
+
+```js
 // Matches sequences of up to 50 'a' chars followed by the same number of 'b'
 rregex`a(?R=50)?b`.exec('test aaaaaabbb')[0];
 // → 'aaabbb'
 ```
 
-Match an equal number of two different subpatterns, as the entire string:
+#### As the entire string
 
 ```js
-import {rregex} from 'regex-recursion';
-
 const re = rregex`^
   (?<balanced>
     a
@@ -38,48 +55,51 @@ re.test('aaabbb'); // → true
 re.test('aaabb'); // → false
 ```
 
-Match balanced parentheses:
+### Match balanced parentheses
 
 ```js
-import {rregex} from 'regex-recursion';
-
 // Matches all balanced parentheses up to depth 50
 const parens = rregex('g')`\(
   ( [^\(\)] | (?R=50) )*
 \)`;
 
-'test (balanced ((parens))) ) () ((a)) ((b)'.match(parens);
-// → ['(balanced ((parens)))', '()', '((a))', '(b)']
+'test ) (balanced ((parens))) () ((a)) ( (b)'.match(parens);
+/* → [
+  '(balanced ((parens)))',
+  '()',
+  '((a))',
+  '(b)'
+] */
+```
 
-// ----------
-// Here's an alternative that matches the same strings
+Here's an alternative that matches the same strings, but adds a nested quantifier. It then uses an atomic group to prevent this nested quantifier from creating the potential for runaway backtracking:
+
+```js
 const parens = rregex('g')`\(
   ( (?> [^\(\)]+ ) | (?R=50) )*
 \)`;
-// This matches sequences of non-parens in one step with the `+` quantifier,
-// and avoids backtracking into these sequences by using an atomic group
-// `(?>…)`. Given the nested quantifier, the atomic group is important here.
-// It avoids runaway backtracking when matching long strings with unbalanced
-// parens. Atomic groups are provided by the base `regex` package
 ```
 
-Match palindromes:
+This matches sequences of non-parens in one step with the nested `+` quantifier, and avoids backtracking into these sequences by wrapping it with an atomic group `(?>…)`. Given that what the nested quantifier `+` matches overlaps with what the outer group can match with its `*` quantifier, the atomic group is important here. It avoids runaway backtracking when matching long strings with unbalanced parens.
+
+Atomic groups are provided by the base `regex` package.
+
+### Match palindromes
+
+#### Match palindroms anywhere within a string
 
 ```js
-import {rregex} from 'regex-recursion';
-
 const palindromes = rregex('gi')`(?<char>\w) ((?R=15)|\w?) \k<char>`;
-// Palindrome max length: 31 = 2 chars (left + right) × depth 15 + 1 in center
 
 'Racecar, ABBA, and redivided'.match(palindromes);
 // → ['Racecar', 'ABBA', 'edivide']
 ```
 
-Match palindromes as complete words:
+In this example, the max length of matched palindromes is 31. That's because it sets the max recursion depth to 15 with `(?R=15)`. So, depth 15 × 2 chars (left + right) for each depth level + 1 optional unbalanced char in the center = 31. The max recursion depth can increased (up to a max of 100) to match longer palindromes.
+
+#### Match palindromes as complete words
 
 ```js
-import {rregex} from 'regex-recursion';
-
 const palindromeWords = rregex('gi')`\b
   (?<palindrome>
     (?<char> \w )
@@ -102,23 +122,4 @@ import {regex} from 'regex';
 import {recursion} from 'regex-recursion';
 
 regex({flags: 'i', postprocessors: [recursion]})`a(?R=2)?b`;
-```
-
-## Install and use
-
-```sh
-npm install regex-recursion
-```
-
-```js
-import {rregex} from 'regex-recursion';
-```
-
-In browsers:
-
-```html
-<script src="https://cdn.jsdelivr.net/npm/regex-recursion/dist/regex-recursion.min.js"></script>
-<script>
-  const {rregex} = Regex.ext;
-</script>
 ```
