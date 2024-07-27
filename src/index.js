@@ -20,7 +20,8 @@ export function rregex(first, ...values) {
 
 const gRToken = String.raw`\\g<(?<gRName>[^>&]+)&R=(?<gRDepth>\d+)>`;
 const recursiveToken = String.raw`\(\?R=(?<rDepth>\d+)\)|${gRToken}`;
-const token = new RegExp(String.raw`\(\?<(?![=!])(?<capturingGroupName>[^>]+)>|${recursiveToken}|\\?.`, 'gsu');
+const namedCapturingDelim = String.raw`\(\?<(?![=!])(?<captureName>[^>]+)>`;
+const token = new RegExp(String.raw`${namedCapturingDelim}|${recursiveToken}|\\?.`, 'gsu');
 
 /**
 @param {string} expression
@@ -44,13 +45,13 @@ export function recursion(expression) {
   let match;
   token.lastIndex = 0;
   while (match = token.exec(expression)) {
-    const {0: m, groups: {capturingGroupName, rDepth, gRName, gRDepth}} = match;
+    const {0: m, groups: {captureName, rDepth, gRName, gRDepth}} = match;
     if (m === '[') {
       numCharClassesOpen++;
     } else if (!numCharClassesOpen) {
 
-      if (capturingGroupName) {
-        groupContentsStartPos.set(capturingGroupName, token.lastIndex);
+      if (captureName) {
+        groupContentsStartPos.set(captureName, token.lastIndex);
       // (?R=N)
       } else if (rDepth) {
         const maxDepth = +rDepth;
@@ -100,7 +101,7 @@ function assertMaxInBounds(max) {
 
 function assertNoFollowingRecursion(remainingExpression) {
   if (hasUnescaped(remainingExpression, recursiveToken, Context.DEFAULT)) {
-    throw new Error('Recursion syntax supported only once per regex');
+    throw new Error('Recursion can only be used once per regex');
   }
 }
 
@@ -131,7 +132,7 @@ function repeatWithDepth(expression, reps, direction = 'forward') {
     const captureNum = depthNum(i);
     result += replaceUnescaped(
       expression,
-      String.raw`\(\?<(?<captureName>[^>]+)>|\\k<(?<backref>[^>]+)>`,
+      String.raw`${namedCapturingDelim}|\\k<(?<backref>[^>]+)>`,
       ({groups: {captureName, backref}}) => {
         const suffix = `_$${captureNum}`;
         return captureName ? `(?<${captureName}${suffix}>` : `\\k<${backref}${suffix}>`;
