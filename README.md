@@ -95,7 +95,7 @@ const palindromes = rregex('gi')`(?<char>\w) ((?R=15)|\w?) \k<char>`;
 // → ['Racecar', 'ABBA', 'edivide']
 ```
 
-In this example, the max length of matched palindromes is 31. That's because it sets the max recursion depth to 15 with `(?R=15)`. So, depth 15 × 2 chars (left + right) for each depth level + 1 optional unbalanced char in the center = 31. The max recursion depth can increased (up to a max of 100) to match longer palindromes.
+In this example, the max length of matched palindromes is 31. That's because it sets the max recursion depth to 15 with `(?R=15)`. So, depth 15 × 2 chars (left + right) for each depth level + 1 optional unbalanced char in the center = 31. To match longer palindromes, the max recursion depth can be increased to a max of 100, which would enable matching palindromes up to 201 characters long.
 
 #### Match palindromes as complete words
 

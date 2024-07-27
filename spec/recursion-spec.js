@@ -23,14 +23,14 @@ describe('recursion', () => {
     const parens = rregex('g')`\(
       ( [^\(\)] | (?R=50) )*
     \)`;
-    expect('test (balanced ((parens))) ) () ((a)) ((b)'.match(parens)).toEqual(['(balanced ((parens)))', '()', '((a))', '(b)']);
+    expect('test ) (balanced ((parens))) () ((a)) ( (b)'.match(parens)).toEqual(['(balanced ((parens)))', '()', '((a))', '(b)']);
   });
 
   it('should match balanced parentheses using an atomic group', () => {
     const parens = rregex('g')`\(
       ( (?> [^\(\)]+ ) | (?R=50) )*
     \)`;
-    expect('test (balanced ((parens))) ) () ((a)) ((b)'.match(parens)).toEqual(['(balanced ((parens)))', '()', '((a))', '(b)']);
+    expect('test ) (balanced ((parens))) () ((a)) ( (b)'.match(parens)).toEqual(['(balanced ((parens)))', '()', '((a))', '(b)']);
   });
 
   it('should match palindromes', () => {
@@ -62,5 +62,10 @@ describe('recursion', () => {
     expect(() => rregex`${/()\1/}a(?R=2)?b`).toThrow();
     expect(() => rregex`(?<n>${/()\1/}a|\g<n&R=2>)`).toThrow();
     expect(() => rregex`${/()\1/}(?<n>a|\g<n&R=2>)`).toThrow();
+  });
+
+  it('should not allow definition groups when using recursion', () => {
+    expect(() => rregex`a(?R=2)?b(?(DEFINE))`).toThrow();
+    expect(() => rregex`(?<n>a|\g<n&R=2>)(?(DEFINE))`).toThrow();
   });
 });
