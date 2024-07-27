@@ -1,17 +1,17 @@
 # regex-recursion [![npm](https://img.shields.io/npm/v/regex-recursion)](https://www.npmjs.com/package/regex-recursion)
 
-This is an extension for the [`regex`](https://github.com/slevithan/regex) package that adds support for matching recursive patterns up to a specified max depth *N*, where *N* must be 2–100.
+This is an extension for the [`regex`](https://github.com/slevithan/regex) package that adds support for recursive matching up to a specified max depth *N*, where *N* must be between 2 and 100.
 
-Recursive matching is added to a regex pattern via one of the following:
+Recursive matching is added to a regex via one of the following:
 
-- `(?R=N)` — Recursively match the entire pattern at this position.
-- `\g<name&R=N>` — Recursively match the contents of group *name* at this position. The `\g` subroutine must be called within the referenced group.
+- `(?R=N)` — Recursively match the entire regex at this position.
+- `\g<name&R=N>` — Recursively match the contents of group *name* at this position. The `\g` subroutine must be called *within* the referenced group.
 
 Recursive matching supports named captures and backreferences, and makes them independent per depth level. So e.g. `groups.name` on a `RegExp` match array is the value captured by group `name` at the top level of the recursion stack.
 
 ## Examples
 
-Match an equal number of two different patterns:
+Match an equal number of two different subpatterns:
 
 ```js
 import {rregex} from 'regex-recursion';
@@ -21,7 +21,7 @@ rregex`a(?R=50)?b`.exec('test aaaaaabbb')[0];
 // → 'aaabbb'
 ```
 
-Match an equal number of two different patterns, as the entire string:
+Match an equal number of two different subpatterns, as the entire string:
 
 ```js
 import {rregex} from 'regex-recursion';

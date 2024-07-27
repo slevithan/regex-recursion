@@ -2,11 +2,11 @@ import {regex} from 'regex';
 import {recursion, rregex} from '../src/index.js';
 
 describe('recursion', () => {
-  it('should match an equal number of two different patterns', () => {
+  it('should match an equal number of two different subpatterns', () => {
     expect(rregex`a(?R=50)?b`.exec('test aaaaaabbb')[0]).toBe('aaabbb');
   });
 
-  it('should match an equal number of two different patterns, as the entire string', () => {
+  it('should match an equal number of two different subpatterns, as the entire string', () => {
     const re = rregex`^
       (?<balanced>
         a

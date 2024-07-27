@@ -23,14 +23,14 @@ const recursiveToken = String.raw`\(\?R=(?<rDepth>\d+)\)|${gRToken}`;
 const token = new RegExp(String.raw`\(\?<(?![=!])(?<capturingGroupName>[^>]+)>|${recursiveToken}|\\?.`, 'gsu');
 
 /**
-@param {string} pattern
+@param {string} expression
 @returns {string}
 */
-export function recursion(pattern) {
-  if (!hasUnescaped(pattern, recursiveToken, Context.DEFAULT)) {
-    return pattern;
+export function recursion(expression) {
+  if (!hasUnescaped(expression, recursiveToken, Context.DEFAULT)) {
+    return expression;
   }
-  if (hasUnescaped(pattern, String.raw`\\[1-9]`, Context.DEFAULT)) {
+  if (hasUnescaped(expression, String.raw`\\[1-9]`, Context.DEFAULT)) {
     // Could allow this with extra effort but it's probably not worth it. To trigger this, the
     // regex must contain both recursion and an interpolated regex with a numbered backref (since
     // numbered backrefs outside regex interpolation are prevented by implicit flag n). Note that
@@ -43,7 +43,7 @@ export function recursion(pattern) {
   let numCharClassesOpen = 0;
   let match;
   token.lastIndex = 0;
-  while (match = token.exec(pattern)) {
+  while (match = token.exec(expression)) {
     const {0: m, groups: {capturingGroupName, rDepth, gRName, gRDepth}} = match;
     if (m === '[') {
       numCharClassesOpen++;
@@ -55,8 +55,8 @@ export function recursion(pattern) {
       } else if (rDepth) {
         const maxDepth = +rDepth;
         assertMaxInBounds(maxDepth);
-        const pre = pattern.slice(0, match.index);
-        const post = pattern.slice(token.lastIndex);
+        const pre = expression.slice(0, match.index);
+        const post = expression.slice(token.lastIndex);
         assertNoFollowingRecursion(post);
         return makeRecursive(pre, post, maxDepth);
       // \g<name&R=N>
@@ -69,17 +69,17 @@ export function recursion(pattern) {
           throw new Error(outsideOwnGroupMsg);
         }
         const startPos = groupContentsStartPos.get(gRName);
-        const recursiveGroupContents = getGroupContents(pattern, startPos);
+        const recursiveGroupContents = getGroupContents(expression, startPos);
         // Appears after/outside the referenced group
         if (!hasUnescaped(recursiveGroupContents, gRToken, Context.DEFAULT)) {
           throw new Error(outsideOwnGroupMsg)
         }
-        const pre = pattern.slice(startPos, match.index);
+        const pre = expression.slice(startPos, match.index);
         const post = recursiveGroupContents.slice(pre.length + m.length);
         assertNoFollowingRecursion(post);
-        return pattern.slice(0, startPos) +
+        return expression.slice(0, startPos) +
           makeRecursive(pre, post, maxDepth) +
-          pattern.slice(startPos + recursiveGroupContents.length);
+          expression.slice(startPos + recursiveGroupContents.length);
       }
 
     } else if (m === ']') {
@@ -98,9 +98,9 @@ function assertMaxInBounds(max) {
   }
 }
 
-function assertNoFollowingRecursion(remainingPattern) {
-  if (hasUnescaped(remainingPattern, recursiveToken, Context.DEFAULT)) {
-    throw new Error('Cannot use recursion more than once in a pattern');
+function assertNoFollowingRecursion(remainingExpression) {
+  if (hasUnescaped(remainingExpression, recursiveToken, Context.DEFAULT)) {
+    throw new Error('Recursion syntax supported only once per regex');
   }
 }
 
@@ -118,19 +118,19 @@ function makeRecursive(pre, post, maxDepth) {
 }
 
 /**
-@param {string} pattern
+@param {string} expression
 @param {number} reps
 @param {'forward' | 'backward'} [direction]
 @returns {string}
 */
-function repeatWithDepth(pattern, reps, direction = 'forward') {
+function repeatWithDepth(expression, reps, direction = 'forward') {
   const startNum = 2;
   const depthNum = i => direction === 'backward' ? reps - i + startNum - 1 : i + startNum;
   let result = '';
   for (let i = 0; i < reps; i++) {
     const captureNum = depthNum(i);
     result += replaceUnescaped(
-      pattern,
+      expression,
       String.raw`\(\?<(?<captureName>[^>]+)>|\\k<(?<backref>[^>]+)>`,
       ({groups: {captureName, backref}}) => {
         const suffix = `_$${captureNum}`;
