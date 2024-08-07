@@ -1,5 +1,5 @@
 import {regex} from 'regex';
-import {Context, getGroupContents, hasUnescaped, replaceUnescaped} from 'regex-utilities';
+import {Context, forEachUnescaped, getGroupContents, hasUnescaped, replaceUnescaped} from 'regex-utilities';
 
 export function rregex(first, ...values) {
   const plugins = (first?.plugins || []).concat(recursion);
@@ -30,16 +30,19 @@ export function recursion(expression) {
     return expression;
   }
   if (hasUnescaped(expression, String.raw`\\[1-9]`, Context.DEFAULT)) {
-    // TODO: Add support for numbered backrefs by automatically adjusting them when they're
-    // duplicated by recursion and refer to a group inside the expression being recursed. To
-    // trigger this error, the regex must use recursion and include one of:
+    // Could add support for numbered backrefs with extra effort, but it's probably not worth it.
+    // To trigger this error, the regex must include recursion and one of the following:
     // - An interpolated regex that contains a numbered backref (since other numbered backrefs are
     //   prevented by implicit flag n).
-    // - A numbered backref, and flag n is explicitly disabled.
-    // Note that `regex`'s extended syntax (atomic groups and sometimes subroutines) can add
-    // numbered backrefs. However, those work fine because external plugins run *before* the
-    // transpilation of built-in syntax extensions
-    throw new Error(`Numbered backreferences cannot be used with recursion`);
+    // - A numbered backref, when flag n is explicitly disabled.
+    // Note that `regex`'s extended syntax (atomic groups and sometimes subroutines) can also add
+    // numbered backrefs, but those work fine because external plugins like this one run *before*
+    // the transpilation of built-in syntax extensions.
+    // To support numbered backrefs, they would need to be automatically adjusted when they're
+    // duplicated by recursion and refer to a group inside the expression being recursed.
+    // Additionally, numbered backrefs inside and outside of the recursed expression would need to
+    // be adjusted based on any capturing groups added by recursion.
+    throw new Error(`Numbered backrefs cannot be used with recursion; use named backref instead`);
   }
   if (hasUnescaped(expression, String.raw`\(\?\(DEFINE\)`, Context.DEFAULT)) {
     throw new Error(`DEFINE groups cannot be used with recursion`);
@@ -116,19 +119,28 @@ function assertNoFollowingRecursion(remainingExpression) {
 @returns {string}
 */
 function makeRecursive(pre, post, maxDepth) {
+  const namesInRecursed = new Set();
+  forEachUnescaped(pre + post, namedCapturingDelim, ({groups: {captureName}}) => {
+    namesInRecursed.add(captureName);
+  }, Context.DEFAULT);
   const reps = maxDepth - 1;
   // Depth 2: 'pre(?:pre(?:)post)post'
   // Depth 3: 'pre(?:pre(?:pre(?:)post)post)post'
-  return `${pre}${repeatWithDepth(`(?:${pre}`, reps)}(?:)${repeatWithDepth(`${post})`, reps, 'backward')}${post}`;
+  return `${pre}${
+    repeatWithDepth(`(?:${pre}`, reps, namesInRecursed)
+  }(?:)${
+    repeatWithDepth(`${post})`, reps, namesInRecursed, 'backward')
+  }${post}`;
 }
 
 /**
 @param {string} expression
 @param {number} reps
+@param {Set<string>} namesInRecursed
 @param {'forward' | 'backward'} [direction]
 @returns {string}
 */
-function repeatWithDepth(expression, reps, direction = 'forward') {
+function repeatWithDepth(expression, reps, namesInRecursed, direction = 'forward') {
   const startNum = 2;
   const depthNum = i => direction === 'backward' ? reps - i + startNum - 1 : i + startNum;
   let result = '';
@@ -136,9 +148,11 @@ function repeatWithDepth(expression, reps, direction = 'forward') {
     const captureNum = depthNum(i);
     result += replaceUnescaped(
       expression,
-      // FIXME: Don't change named backrefs that refer outside of the expression being recursed
       String.raw`${namedCapturingDelim}|\\k<(?<backref>[^>]+)>`,
-      ({groups: {captureName, backref}}) => {
+      ({0: m, groups: {captureName, backref}}) => {
+        if (backref && !namesInRecursed.has(backref)) {
+          return m;
+        }
         const suffix = `_$${captureNum}`;
         return captureName ? `(?<${captureName}${suffix}>` : `\\k<${backref}${suffix}>`;
       },

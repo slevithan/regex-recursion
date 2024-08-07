@@ -50,6 +50,10 @@ describe('recursion', () => {
     expect('Racecar, ABBA, and redivided'.match(palindromeWords)).toEqual(['Racecar', 'ABBA']);
   });
 
+  it('should not adjust named backreferences referring outside of the recursed expression', () => {
+    expect('aababbabcc').toMatch(rregex`^(?<a>a)\k<a>(?<r>(?<b>b)\k<a>\k<b>\k<c>\g<r&R=2>?)(?<c>c)\k<c>$`);
+  });
+
   it('should allow directly using recursion as a plugin with tag regex', () => {
     expect('aAbb').toMatch(regex({flags: 'i', plugins: [recursion]})`a(?R=2)?b`);
   });
