@@ -42,7 +42,7 @@ export function recursion(expression) {
     // duplicated by recursion and refer to a group inside the expression being recursed.
     // Additionally, numbered backrefs inside and outside of the recursed expression would need to
     // be adjusted based on any capturing groups added by recursion.
-    throw new Error(`Numbered backrefs cannot be used with recursion; use named backref instead`);
+    throw new Error(`Numbered backrefs cannot be used with recursion; use named backref`);
   }
   if (hasUnescaped(expression, String.raw`\(\?\(DEFINE\)`, Context.DEFAULT)) {
     throw new Error(`DEFINE groups cannot be used with recursion`);
@@ -66,7 +66,7 @@ export function recursion(expression) {
         const pre = expression.slice(0, match.index);
         const post = expression.slice(token.lastIndex);
         assertNoFollowingRecursion(post);
-        return makeRecursive(pre, post, maxDepth);
+        return makeRecursive(pre, post, maxDepth, false);
       // \g<name&R=N>
       } else if (gRName) {
         const maxDepth = +gRDepth;
@@ -86,7 +86,7 @@ export function recursion(expression) {
         const post = recursiveGroupContents.slice(pre.length + m.length);
         assertNoFollowingRecursion(post);
         return expression.slice(0, startPos) +
-          makeRecursive(pre, post, maxDepth) +
+          makeRecursive(pre, post, maxDepth, true) +
           expression.slice(startPos + recursiveGroupContents.length);
       }
 
@@ -116,27 +116,31 @@ function assertNoFollowingRecursion(remainingExpression) {
 @param {string} pre
 @param {string} post
 @param {number} maxDepth
+@param {boolean} isSubpattern
 @returns {string}
 */
-function makeRecursive(pre, post, maxDepth) {
+function makeRecursive(pre, post, maxDepth, isSubpattern) {
   const namesInRecursed = new Set();
-  forEachUnescaped(pre + post, namedCapturingDelim, ({groups: {captureName}}) => {
-    namesInRecursed.add(captureName);
-  }, Context.DEFAULT);
+  // Avoid this work if not needed
+  if (isSubpattern) {
+    forEachUnescaped(pre + post, namedCapturingDelim, ({groups: {captureName}}) => {
+      namesInRecursed.add(captureName);
+    }, Context.DEFAULT);
+  }
   const reps = maxDepth - 1;
   // Depth 2: 'pre(?:pre(?:)post)post'
   // Depth 3: 'pre(?:pre(?:pre(?:)post)post)post'
   return `${pre}${
-    repeatWithDepth(`(?:${pre}`, reps, namesInRecursed)
+    repeatWithDepth(`(?:${pre}`, reps, isSubpattern ? namesInRecursed: null)
   }(?:)${
-    repeatWithDepth(`${post})`, reps, namesInRecursed, 'backward')
+    repeatWithDepth(`${post})`, reps, isSubpattern ? namesInRecursed: null, 'backward')
   }${post}`;
 }
 
 /**
 @param {string} expression
 @param {number} reps
-@param {Set<string>} namesInRecursed
+@param {Set<string> | null} namesInRecursed
 @param {'forward' | 'backward'} [direction]
 @returns {string}
 */
@@ -150,7 +154,7 @@ function repeatWithDepth(expression, reps, namesInRecursed, direction = 'forward
       expression,
       String.raw`${namedCapturingDelim}|\\k<(?<backref>[^>]+)>`,
       ({0: m, groups: {captureName, backref}}) => {
-        if (backref && !namesInRecursed.has(backref)) {
+        if (backref && namesInRecursed && !namesInRecursed.has(backref)) {
           return m;
         }
         const suffix = `_$${captureNum}`;
