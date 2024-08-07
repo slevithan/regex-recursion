@@ -1,20 +1,4 @@
-import {regex} from 'regex';
 import {Context, forEachUnescaped, getGroupContents, hasUnescaped, replaceUnescaped} from 'regex-utilities';
-
-export function rregex(first, ...values) {
-  const plugins = (first?.plugins || []).concat(recursion);
-  // Given a template
-  if (Array.isArray(first?.raw)) {
-    return regex({flags: '', plugins})(first, ...values);
-  // Given flags
-  } else if ((typeof first === 'string' || first === undefined) && !values.length) {
-    return regex({flags: first, plugins});
-  // Given an options object
-  } else if ({}.toString.call(first) === '[object Object]' && !values.length) {
-    return regex({...first, plugins});
-  }
-  throw new Error(`Unexpected arguments: ${JSON.stringify([first, ...values])}`);
-}
 
 const gRToken = String.raw`\\g<(?<gRName>[^>&]+)&R=(?<gRDepth>\d+)>`;
 const recursiveToken = String.raw`\(\?R=(?<rDepth>\d+)\)|${gRToken}`;
