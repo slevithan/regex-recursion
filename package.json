@@ -1,11 +1,12 @@
 {
   "name": "regex-recursion",
   "version": "3.1.0",
-  "description": "Recursive matching extension for the regex package",
+  "description": "Recursive matching plugin for the regex package",
   "author": "Steven Levithan",
   "license": "MIT",
   "type": "module",
   "exports": "./src/index.js",
+  "browser": "./dist/regex-recursion.min.js",
   "scripts": {
     "prebuild": "rimraf --glob dist/*",
     "build": "esbuild src/index.js --bundle --minify --outfile=dist/regex-recursion.min.js --global-name=Regex.ext",
@@ -27,7 +28,7 @@
     "regexp"
   ],
   "dependencies": {
-    "regex": "^3.1.0",
+    "regex": "^4.0.0",
     "regex-utilities": "^2.1.0"
   },
   "devDependencies": {

@@ -50,8 +50,8 @@ describe('recursion', () => {
     expect('Racecar, ABBA, and redivided'.match(palindromeWords)).toEqual(['Racecar', 'ABBA']);
   });
 
-  it('should allow directly using recursion as a postprocessor with tag regex', () => {
-    expect('aAbb').toMatch(regex({flags: 'i', postprocessors: [recursion]})`a(?R=2)?b`);
+  it('should allow directly using recursion as a plugin with tag regex', () => {
+    expect('aAbb').toMatch(regex({flags: 'i', plugins: [recursion]})`a(?R=2)?b`);
   });
 
   // Just documenting current behavior; this could be supported in the future

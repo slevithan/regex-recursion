@@ -1,11 +1,12 @@
 # regex-recursion [![npm](https://img.shields.io/npm/v/regex-recursion)](https://www.npmjs.com/package/regex-recursion)
 
-This is an extension for the [`regex`](https://github.com/slevithan/regex) package that adds support for recursive matching up to a specified max depth *N*, where *N* must be between 2 and 100. Generated regexes are native `RegExp` instances, and support all JavaScript regular expression features.
+This is a plugin for the [`regex`](https://github.com/slevithan/regex) library that adds support for recursive matching up to a specified max depth *N*, where *N* must be between 2 and 100. Generated regexes are native `RegExp` instances, and support all JavaScript regular expression features.
 
 Recursive matching is added to a regex via one of the following:
 
 - `(?R=N)` — Recursively match the entire regex at this position.
-- `\g<name&R=N>` — Recursively match the contents of group *name* at this position. The `\g` subroutine must be called *within* the referenced group.
+- `\g<name&R=N>` — Recursively match the contents of group *name* at this position.
+  - The `\g` subroutine must be called *within* the referenced group.
 
 Recursive matching supports named captures/backreferences, and makes them independent per depth level. So e.g. `groups.name` on a match object is the value captured by group `name` at the top level of the recursion stack.
 
@@ -22,7 +23,7 @@ import {rregex} from 'regex-recursion';
 In browsers:
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/regex-recursion/dist/regex-recursion.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/regex-recursion@3.1.0/dist/regex-recursion.min.js"></script>
 <script>
   const {rregex} = Regex.ext;
 </script>
@@ -115,11 +116,11 @@ const palindromeWords = rregex('gi')`\b
 
 ## Sugar free
 
-Template tag `rregex` is sugar for using the base `regex` tag and adding recursion support via a postprocessor. You can also add recursion support the verbose way:
+Template tag `rregex` is sugar for using the base `regex` tag and adding recursion support via a plugin. You can also add recursion support the verbose way:
 
 ```js
 import {regex} from 'regex';
 import {recursion} from 'regex-recursion';
 
-regex({flags: 'i', postprocessors: [recursion]})`a(?R=2)?b`;
+regex({flags: 'i', plugins: [recursion]})`a(?R=2)?b`;
 ```

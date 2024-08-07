@@ -2,18 +2,16 @@ import {regex} from 'regex';
 import {Context, getGroupContents, hasUnescaped, replaceUnescaped} from 'regex-utilities';
 
 export function rregex(first, ...values) {
-  const postprocessors = (first?.postprocessors || []).concat(recursion);
-  // Allow binding to other constructors
-  const tag = this instanceof Function ? regex.bind(this) : regex;
+  const plugins = (first?.plugins || []).concat(recursion);
   // Given a template
   if (Array.isArray(first?.raw)) {
-    return tag({flags: '', postprocessors})(first, ...values);
+    return regex({flags: '', plugins})(first, ...values);
   // Given flags
   } else if ((typeof first === 'string' || first === undefined) && !values.length) {
-    return tag({flags: first, postprocessors});
+    return regex({flags: first, plugins});
   // Given an options object
   } else if ({}.toString.call(first) === '[object Object]' && !values.length) {
-    return tag({...first, postprocessors});
+    return regex({...first, plugins});
   }
   throw new Error(`Unexpected arguments: ${JSON.stringify([first, ...values])}`);
 }
@@ -32,16 +30,19 @@ export function recursion(expression) {
     return expression;
   }
   if (hasUnescaped(expression, String.raw`\\[1-9]`, Context.DEFAULT)) {
-    // Could allow this with extra effort but it's probably not worth it. To trigger this, the
-    // regex must contain both recursion and an interpolated regex with a numbered backref (since
-    // numbered backrefs outside regex interpolation are prevented by implicit flag n). Note that
-    // some of `regex`'s built-in features (atomic groups and subroutines) can add numbered
-    // backrefs. However, those work fine with recursion because postprocessors from extensions
-    // (like `regex-recursion`) run before built-in postprocessors
-    throw new Error(`Invalid decimal escape in interpolated regex; cannot be used with recursion`);
+    // TODO: Add support for numbered backrefs by automatically adjusting them when they're
+    // duplicated by recursion and refer to a group inside the expression being recursed. To
+    // trigger this error, the regex must use recursion and include one of:
+    // - An interpolated regex that contains a numbered backref (since other numbered backrefs are
+    //   prevented by implicit flag n).
+    // - A numbered backref, and flag n is explicitly disabled.
+    // Note that `regex`'s extended syntax (atomic groups and sometimes subroutines) can add
+    // numbered backrefs. However, those work fine because external plugins run *before* the
+    // transpilation of built-in syntax extensions
+    throw new Error(`Numbered backreferences cannot be used with recursion`);
   }
   if (hasUnescaped(expression, String.raw`\(\?\(DEFINE\)`, Context.DEFAULT)) {
-    throw new Error(`Definition groups cannot be used with recursion`);
+    throw new Error(`DEFINE groups cannot be used with recursion`);
   }
   const groupContentsStartPos = new Map();
   let numCharClassesOpen = 0;
@@ -135,6 +136,7 @@ function repeatWithDepth(expression, reps, direction = 'forward') {
     const captureNum = depthNum(i);
     result += replaceUnescaped(
       expression,
+      // FIXME: Don't change named backrefs that refer outside of the expression being recursed
       String.raw`${namedCapturingDelim}|\\k<(?<backref>[^>]+)>`,
       ({groups: {captureName, backref}}) => {
         const suffix = `_$${captureNum}`;
