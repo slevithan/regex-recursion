@@ -68,6 +68,8 @@ re.test('aaabbb'); // → true
 re.test('aaabb'); // → false
 ```
 
+Note the `^` and `$` anchors outside of the recursive subpattern.
+
 ### Match balanced parentheses
 
 ```js
@@ -85,7 +87,7 @@ const parens = regex({flags: 'g', plugins: [recursion]})`\(
 ] */
 ```
 
-Here's an alternative that matches the same strings, but adds a nested quantifier. It then uses an atomic group to prevent this nested quantifier from creating the potential for runaway backtracking:
+Following is an alternative that matches the same strings, but adds a nested quantifier. It then uses an atomic group to prevent this nested quantifier from creating the potential for [catastrophic backtracking](https://www.regular-expressions.info/catastrophic.html).
 
 ```js
 const parens = regex({flags: 'g', plugins: [recursion]})`\(
@@ -93,7 +95,7 @@ const parens = regex({flags: 'g', plugins: [recursion]})`\(
 \)`;
 ```
 
-This matches sequences of non-parens in one step with the nested `+` quantifier, and avoids backtracking into these sequences by wrapping it with an atomic group `(?>…)`. Given that what the nested quantifier `+` matches overlaps with what the outer group can match with its `*` quantifier, the atomic group is important here. It avoids runaway backtracking when matching long strings with unbalanced parens.
+This matches sequences of non-parens in one step with the nested `+` quantifier, and avoids backtracking into these sequences by wrapping it with an atomic group `(?>…)`. Given that what the nested quantifier `+` matches overlaps with what the outer group can match with its `*` quantifier, the atomic group is important here. It avoids exponential backtracking when matching long strings with unbalanced parens.
 
 Atomic groups are provided by the base `regex` library.
 
@@ -130,4 +132,4 @@ const palindromeWords = regex({flags: 'gi', plugins: [recursion]})`\b
 // → ['Racecar', 'ABBA']
 ```
 
-Note the word boundaries (`\b`) at the beginning and end of the regex, outside of the recursive subpattern.
+Note the `\b` word boundaries outside of the recursive subpattern.
