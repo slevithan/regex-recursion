@@ -1,8 +1,7 @@
 # regex-recursion
 
-[![build status](https://github.com/slevithan/regex-recursion/workflows/CI/badge.svg)](https://github.com/slevithan/regex-recursion/actions)
-[![npm](https://img.shields.io/npm/v/regex-recursion)](https://www.npmjs.com/package/regex-recursion)
-[![bundle size](https://deno.bundlejs.com/badge?q=regex-recursion&treeshake=[*])](https://bundlejs.com/?q=regex-recursion&treeshake=[*])
+[![npm version][npm-version-src]][npm-version-href]
+[![bundle][bundle-src]][bundle-href]
 
 This is a plugin for the [`regex`](https://github.com/slevithan/regex) library that adds support for recursive matching up to a specified max depth *N*, where *N* must be between 2 and 100. Generated regexes are native `RegExp` instances, and support all JavaScript regular expression features.
 
@@ -74,9 +73,9 @@ Note the `^` and `$` anchors outside of the recursive subpattern.
 
 ```js
 // Matches all balanced parentheses up to depth 50
-const parens = regex({flags: 'g', plugins: [recursion]})`\(
-  ( [^\(\)] | (?R=50) )*
-\)`;
+const parens = regex({flags: 'g', plugins: [recursion]})`
+  \( ( [^\(\)] | (?R=50) )* \)
+`;
 
 'test ) (balanced ((parens))) () ((a)) ( (b)'.match(parens);
 /* → [
@@ -90,9 +89,9 @@ const parens = regex({flags: 'g', plugins: [recursion]})`\(
 Following is an alternative that matches the same strings, but adds a nested quantifier. It then uses an atomic group to prevent this nested quantifier from creating the potential for [catastrophic backtracking](https://www.regular-expressions.info/catastrophic.html).
 
 ```js
-const parens = regex({flags: 'g', plugins: [recursion]})`\(
-  ( (?> [^\(\)]+ ) | (?R=50) )*
-\)`;
+const parens = regex({flags: 'g', plugins: [recursion]})`
+  \( ( (?> [^\(\)]+ ) | (?R=50) )* \)
+`;
 ```
 
 This matches sequences of non-parens in one step with the nested `+` quantifier, and avoids backtracking into these sequences by wrapping it with an atomic group `(?>…)`. Given that what the nested quantifier `+` matches overlaps with what the outer group can match with its `*` quantifier, the atomic group is important here. It avoids exponential backtracking when matching long strings with unbalanced parens.
@@ -101,7 +100,7 @@ Atomic groups are provided by the base `regex` library.
 
 ### Match palindromes
 
-#### Match palindroms anywhere within a string
+#### Match palindromes anywhere within a string
 
 ```js
 const palindromes = regex({flags: 'gi', plugins: [recursion]})`
@@ -132,4 +131,11 @@ const palindromeWords = regex({flags: 'gi', plugins: [recursion]})`\b
 // → ['Racecar', 'ABBA']
 ```
 
-Note the `\b` word boundaries outside of the recursive subpattern.
+Notice the `\b` word boundaries outside of the recursive subpattern.
+
+<!-- Badges -->
+
+[npm-version-src]: https://img.shields.io/npm/v/regex-recursion
+[npm-version-href]: https://npmjs.com/package/regex-recursion
+[bundle-src]: https://img.shields.io/bundlephobia/minzip/regex-recursion?label=minzip
+[bundle-href]: https://bundlephobia.com/package/regex-recursion

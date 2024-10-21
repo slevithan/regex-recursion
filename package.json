@@ -8,7 +8,7 @@
   "exports": "./src/index.js",
   "browser": "./dist/regex-recursion.min.js",
   "scripts": {
-    "prebuild": "rimraf --glob dist/*",
+    "prebuild": "rm -rf dist/*",
     "build": "esbuild src/index.js --bundle --minify --outfile=dist/regex-recursion.min.js --global-name=Regex.plugins",
     "pretest": "npm run build",
     "test": "jasmine",
@@ -28,12 +28,11 @@
     "regexp"
   ],
   "dependencies": {
-    "regex-utilities": "^2.1.0"
+    "regex-utilities": "^2.3.0"
   },
   "devDependencies": {
-    "regex": "^4.0.0",
-    "esbuild": "^0.23.0",
-    "jasmine": "^5.2.0",
-    "rimraf": "^6.0.1"
+    "regex": "^4.3.3",
+    "esbuild": "^0.24.0",
+    "jasmine": "^5.4.0"
   }
 }
