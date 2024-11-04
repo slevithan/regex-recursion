@@ -5,7 +5,12 @@
   "author": "Steven Levithan",
   "license": "MIT",
   "type": "module",
-  "exports": "./src/index.js",
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts",
+      "import": "./src/index.js"
+    }
+  },
   "browser": "./dist/regex-recursion.min.js",
   "types": "./types/index.d.ts",
   "scripts": {
