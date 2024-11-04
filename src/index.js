@@ -1,7 +1,7 @@
 import {Context, forEachUnescaped, getGroupContents, hasUnescaped, replaceUnescaped} from 'regex-utilities';
 
-const gRToken = String.raw`\\g<(?<gRName>[^>&]+)&R=(?<gRDepth>\d+)>`;
-const recursiveToken = String.raw`\(\?R=(?<rDepth>\d+)\)|${gRToken}`;
+const gRToken = String.raw`\\g<(?<gRName>[^>&]+)&R=(?<gRDepth>[^>]+)>`;
+const recursiveToken = String.raw`\(\?R=(?<rDepth>[^\)]+)\)|${gRToken}`;
 const namedCapturingDelim = String.raw`\(\?<(?![=!])(?<captureName>[^>]+)>`;
 const token = new RegExp(String.raw`${namedCapturingDelim}|${recursiveToken}|\\?.`, 'gsu');
 
@@ -45,16 +45,16 @@ export function recursion(expression) {
         groupContentsStartPos.set(captureName, token.lastIndex);
       // (?R=N)
       } else if (rDepth) {
+        assertMaxInBounds(rDepth);
         const maxDepth = +rDepth;
-        assertMaxInBounds(maxDepth);
         const pre = expression.slice(0, match.index);
         const post = expression.slice(token.lastIndex);
         assertNoFollowingRecursion(post);
         return makeRecursive(pre, post, maxDepth, false);
       // \g<name&R=N>
       } else if (gRName) {
+        assertMaxInBounds(gRDepth);
         const maxDepth = +gRDepth;
-        assertMaxInBounds(maxDepth);
         const outsideOwnGroupMsg = `Recursion via \\g<${gRName}&R=${gRDepth}> must be used within the referenced group`;
         // Appears before/outside the referenced group
         if (!groupContentsStartPos.has(gRName)) {
@@ -82,11 +82,16 @@ export function recursion(expression) {
 }
 
 /**
-@param {number} max
+@param {string} max
 */
 function assertMaxInBounds(max) {
+  const errMsg = `Max depth must be integer between 2 and 100; used ${max}`;
+  if (!/^[1-9]\d*$/.test(max)) {
+    throw new Error(errMsg);
+  }
+  max = +max;
   if (max < 2 || max > 100) {
-    throw new Error(`Max depth must be between 2 and 100; used ${max}`);
+    throw new Error(errMsg);
   }
 }
 
