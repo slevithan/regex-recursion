@@ -1,6 +1,6 @@
 {
   "name": "regex-recursion",
-  "version": "4.0.0",
+  "version": "4.1.0",
   "description": "Recursive matching plugin for the regex package",
   "author": "Steven Levithan",
   "license": "MIT",
