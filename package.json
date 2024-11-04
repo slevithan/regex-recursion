@@ -7,9 +7,12 @@
   "type": "module",
   "exports": "./src/index.js",
   "browser": "./dist/regex-recursion.min.js",
+  "types": "./types/index.d.ts",
   "scripts": {
-    "prebuild": "rm -rf dist/*",
-    "build": "esbuild src/index.js --bundle --minify --outfile=dist/regex-recursion.min.js --global-name=Regex.plugins",
+    "bundle:global": "esbuild src/index.js --global-name=Regex.plugins --bundle --minify --sourcemap --outfile=dist/index.min.js",
+    "types": "tsc src/index.js --rootDir src --declaration --allowJs --emitDeclarationOnly --outDir types",
+    "prebuild": "rm -rf dist/* types/*",
+    "build": "npm run bundle:global && npm run types",
     "pretest": "npm run build",
     "test": "jasmine",
     "prepare": "npm test"
@@ -31,8 +34,9 @@
     "regex-utilities": "^2.3.0"
   },
   "devDependencies": {
-    "regex": "^4.3.3",
     "esbuild": "^0.24.0",
-    "jasmine": "^5.4.0"
+    "jasmine": "^5.4.0",
+    "regex": "^4.4.0",
+    "typescript": "^5.6.3"
   }
 }

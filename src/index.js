@@ -35,7 +35,7 @@ export function recursion(expression) {
   let numCharClassesOpen = 0;
   let match;
   token.lastIndex = 0;
-  while (match = token.exec(expression)) {
+  while ((match = token.exec(expression))) {
     const {0: m, groups: {captureName, rDepth, gRName, gRDepth}} = match;
     if (m === '[') {
       numCharClassesOpen++;
