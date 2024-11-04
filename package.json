@@ -9,7 +9,7 @@
   "browser": "./dist/regex-recursion.min.js",
   "types": "./types/index.d.ts",
   "scripts": {
-    "bundle:global": "esbuild src/index.js --global-name=Regex.plugins --bundle --minify --sourcemap --outfile=dist/index.min.js",
+    "bundle:global": "esbuild src/index.js --global-name=Regex.plugins --bundle --minify --sourcemap --outfile=dist/regex-recursion.min.js",
     "types": "tsc src/index.js --rootDir src --declaration --allowJs --emitDeclarationOnly --outDir types",
     "prebuild": "rm -rf dist/* types/*",
     "build": "npm run bundle:global && npm run types",
@@ -18,8 +18,9 @@
     "prepare": "npm test"
   },
   "files": [
+    "dist",
     "src",
-    "dist"
+    "types"
   ],
   "repository": {
     "type": "git",

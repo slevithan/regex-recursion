@@ -3,15 +3,15 @@
 [![npm version][npm-version-src]][npm-version-href]
 [![bundle][bundle-src]][bundle-href]
 
-This is a plugin for the [`regex`](https://github.com/slevithan/regex) library that adds support for recursive matching up to a specified max depth *N*, where *N* must be between 2 and 100. Generated regexes are native `RegExp` instances, and support all JavaScript regular expression features.
+This is an official plugin for the [`regex`](https://github.com/slevithan/regex) library that adds support for recursive matching up to a specified max depth *N*, where *N* must be between 2 and 100. Generated regexes are native `RegExp` instances, and support all JavaScript regular expression features except numbered backreferences (support could be added in future versions).
 
 Recursive matching is added to a regex via one of the following:
 
 - `(?R=N)` — Recursively match the entire regex at this position.
-- `\g<name&R=N>` — Recursively match the contents of group *name* at this position.
+- `\g<name&R=N>`, `\g<N&R=N>` — Recursively match the contents of the group referenced by name or number at this position.
   - The `\g` subroutine must be called *within* the referenced group.
 
-Recursive matching supports named captures/backreferences, and makes them independent per depth level. So e.g. `groups.name` on a match object is the value captured by group `name` at the top level of the recursion stack.
+Recursive matching supports named captures and named backreferences, which are independent per depth level. So e.g. `groups.name` on a match object is the value captured by group `name` at the top level of the recursion stack.
 
 ## Install and use
 
