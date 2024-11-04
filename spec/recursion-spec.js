@@ -33,7 +33,6 @@ describe('recursion', () => {
   });
 
   it('should throw for multiple direct, nonoverlapping recursions', () => {
-    // TODO: Has a bug and lets invalid JS syntax through
     expect(() => regex({plugins: [recursion]})`(?<r1>a\g<r1&R=2>?)(?<r2>a\g<r2&R=2>?)`).toThrow();
   });
 

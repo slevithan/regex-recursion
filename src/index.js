@@ -43,7 +43,7 @@ export function recursion(expression) {
 
       if (captureName) {
         groupContentsStartPos.set(captureName, token.lastIndex);
-      // (?R=N)
+      // `(?R=N)`
       } else if (rDepth) {
         assertMaxInBounds(rDepth);
         const maxDepth = +rDepth;
@@ -51,24 +51,24 @@ export function recursion(expression) {
         const post = expression.slice(token.lastIndex);
         assertNoFollowingRecursion(post);
         return makeRecursive(pre, post, maxDepth, false);
-      // \g<name&R=N>
+      // `\g<name&R=N>`
       } else if (gRName) {
         assertMaxInBounds(gRDepth);
         const maxDepth = +gRDepth;
         const outsideOwnGroupMsg = `Recursion via \\g<${gRName}&R=${gRDepth}> must be used within the referenced group`;
-        // Appears before/outside the referenced group
+        // Appears before (outside) the referenced group
         if (!groupContentsStartPos.has(gRName)) {
           throw new Error(outsideOwnGroupMsg);
         }
         const startPos = groupContentsStartPos.get(gRName);
         const recursiveGroupContents = getGroupContents(expression, startPos);
-        // Appears after/outside the referenced group
+        // Appears after (outside) the referenced group
         if (!hasUnescaped(recursiveGroupContents, gRToken, Context.DEFAULT)) {
           throw new Error(outsideOwnGroupMsg)
         }
         const pre = expression.slice(startPos, match.index);
         const post = recursiveGroupContents.slice(pre.length + m.length);
-        assertNoFollowingRecursion(post);
+        assertNoFollowingRecursion(expression.slice(token.lastIndex));
         return expression.slice(0, startPos) +
           makeRecursive(pre, post, maxDepth, true) +
           expression.slice(startPos + recursiveGroupContents.length);
