@@ -3,15 +3,17 @@
 [![npm version][npm-version-src]][npm-version-href]
 [![bundle][bundle-src]][bundle-href]
 
-This is an official plugin for the [`regex`](https://github.com/slevithan/regex) library that adds support for recursive matching up to a specified max depth *N*, where *N* must be between 2 and 100. Generated regexes are native `RegExp` instances, and support all JavaScript regular expression features except numbered backreferences (support could be added in future versions).
+This is an official plugin for the [`regex`](https://github.com/slevithan/regex) library that adds support for recursive matching up to a specified max depth *N*, where *N* can be between 2 and 100. Generated regexes are native `RegExp` instances, and support all JavaScript regular expression features except numbered backreferences (support could be added in future versions).
 
 Recursive matching is added to a regex via one of the following:
 
 - `(?R=N)` — Recursively match the entire regex at this position.
-- `\g<name&R=N>`, `\g<N&R=N>` — Recursively match the contents of the group referenced by name or number at this position.
-  - The `\g` subroutine must be called *within* the referenced group.
+- `\g<name&R=N>` or `\g<number&R=N>` — Recursively match the contents of the group referenced by name or number at this position.
+  - The `\g` subroutine must be *within* the referenced group.
 
-Recursive matching supports named captures and named backreferences, which are independent per depth level. So e.g. `groups.name` on a match object is the value captured by group `name` at the top level of the recursion stack.
+The recursion depth limit is provided where *`N`* is shown above.
+
+Recursive matching supports named captures and backreferences, which are independent per depth level. So e.g. `groups.name` on a match object is the value captured by group `name` at the top level of the recursion stack.
 
 ## Install and use
 
@@ -69,7 +71,7 @@ re.test('aaabbb'); // → true
 re.test('aaabb'); // → false
 ```
 
-Note the `^` and `$` anchors outside of the recursive subpattern.
+Notice the `^` and `$` anchors outside of the recursive subpattern.
 
 ### Match balanced parentheses
 
@@ -98,7 +100,7 @@ const parens = regex({flags: 'g', plugins: [recursion]})`
 
 This matches sequences of non-parens in one step with the nested `+` quantifier, and avoids backtracking into these sequences by wrapping it with an atomic group `(?>…)`. Given that what the nested quantifier `+` matches overlaps with what the outer group can match with its `*` quantifier, the atomic group is important here. It avoids exponential backtracking when matching long strings with unbalanced parens.
 
-Atomic groups are provided by the base `regex` library.
+[Atomic groups](https://github.com/slevithan/regex#atomic-groups) are provided by the base `regex` library.
 
 ### Match palindromes
 
@@ -137,7 +139,7 @@ Notice the `\b` word boundaries outside of the recursive subpattern.
 
 <!-- Badges -->
 
-[npm-version-src]: https://img.shields.io/npm/v/regex-recursion
+[npm-version-src]: https://img.shields.io/npm/v/regex-recursion?color=78C372
 [npm-version-href]: https://npmjs.com/package/regex-recursion
-[bundle-src]: https://img.shields.io/bundlephobia/minzip/regex-recursion?label=minzip
-[bundle-href]: https://bundlephobia.com/package/regex-recursion
+[bundle-src]: https://img.shields.io/bundlejs/size/regex-recursion?color=78C372&label=minzip
+[bundle-href]: https://bundlejs.com/?q=regex-recursion&treeshake=[*]
