@@ -3,7 +3,7 @@
 [![npm version][npm-version-src]][npm-version-href]
 [![bundle][bundle-src]][bundle-href]
 
-This is an official plugin for the [`regex`](https://github.com/slevithan/regex) library that adds support for recursive matching up to a specified max depth *N*, where *N* can be between 2 and 100. Generated regexes are native `RegExp` instances, and support all JavaScript regular expression features except numbered backreferences (support could be added in future versions).
+This is an official plugin for [Regex+](https://github.com/slevithan/regex) that adds support for recursive matching up to a specified max depth *N*, where *N* can be between 2 and 100. Generated regexes are native `RegExp` instances, and support all JavaScript regular expression features except numbered backreferences (support could be added in future versions).
 
 Recursive matching is added to a regex via one of the following:
 
