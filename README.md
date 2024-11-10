@@ -5,15 +5,13 @@
 
 This is an official plugin for [Regex+](https://github.com/slevithan/regex) that adds support for recursive matching up to a specified max depth *N*, where *N* can be between 2 and 100. Generated regexes are native `RegExp` instances, and support all JavaScript regular expression features except numbered backreferences (support could be added in future versions).
 
-Recursive matching is added to a regex via one of the following:
+Recursive matching is added to a regex via one of the following (the recursion depth limit is provided in place of *`N`*):
 
 - `(?R=N)` — Recursively match the entire regex at this position.
 - `\g<name&R=N>` or `\g<number&R=N>` — Recursively match the contents of the group referenced by name or number at this position.
   - The `\g` subroutine must be *within* the referenced group.
 
-The recursion depth limit is provided where *`N`* is shown above.
-
-Recursive matching supports named captures and backreferences, which are independent per depth level. So e.g. `groups.name` on a match object is the value captured by group `name` at the top level of the recursion stack.
+Named captures and backreferences are supported within recursion, and are independent per depth level. So e.g. `groups.name` on a match object is the value captured by group `name` at the top level of the recursion stack.
 
 ## Install and use
 
