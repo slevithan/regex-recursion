@@ -2,14 +2,6 @@ import {regex} from 'regex';
 import {recursion} from '../src/index.js';
 
 describe('recursion', () => {
-  it('should throw for invalid and unsupported recursion depths', () => {
-    const values = ['-2', '0', '1', '02', '+2', '2.5', '101', 'a', null];
-    for (const value of values) {
-      expect(() => regex({plugins: [recursion]})({raw: [`a(?R=${value})?b`]})).toThrow();
-      expect(() => regex({plugins: [recursion]})({raw: [`(?<r>a\\g<r&R=${value}>?b)`]})).toThrow();
-    }
-  });
-
   it('should allow recursion depths 2-100', () => {
     const values = ['2', '100'];
     for (const value of values) {
@@ -18,7 +10,15 @@ describe('recursion', () => {
     }
   });
 
-  // Just documenting current behavior; this could be supported in the future
+  it('should throw for invalid and unsupported recursion depths', () => {
+    const values = ['-2', '0', '1', '02', '+2', '2.5', '101', 'a', 'null'];
+    for (const value of values) {
+      expect(() => regex({plugins: [recursion]})({raw: [`a(?R=${value})?b`]})).toThrow();
+      expect(() => regex({plugins: [recursion]})({raw: [`(?<r>a\\g<r&R=${value}>?b)`]})).toThrow();
+    }
+  });
+
+  // Documenting current behavior; this could be supported in the future
   it('should throw for numbered backrefs in interpolated regexes when using recursion', () => {
     expect(() => regex({plugins: [recursion]})`a(?R=2)?b${/()\1/}`).toThrow();
     expect(() => regex({plugins: [recursion]})`(?<n>a|\g<n&R=2>${/()\1/})`).toThrow();
@@ -34,13 +34,24 @@ describe('recursion', () => {
   });
 
   it('should not modify escaped recursion operators', () => {
+    expect(() => regex({plugins: [recursion]})`a\(?R=2)?b`).toThrow();
     expect('a\\g<r&R=2>b').toMatch(regex({plugins: [recursion]})`^(?<r>a\\g<r&R=2>?b)$`);
     expect('a\\a\\bb').toMatch(regex({plugins: [recursion]})`^(?<r>a\\\g<r&R=2>?b)$`);
+  });
+
+  it('should not modify recursion-like syntax in character classes', () => {
+    expect(() => regex({plugins: [recursion]})`a[(?R=2)]b`).toThrow();
+    expect(() => regex({plugins: [recursion]})`(?<r>a[\g<r&R=2>]b)`).toThrow();
   });
 
   describe('global', () => {
     it('should match global recursion', () => {
       expect(regex({plugins: [recursion]})`a(?R=2)?b`.exec('aabb')?.[0]).toBe('aabb');
+    });
+
+    it('should throw for overlapping global recursions', () => {
+      expect(() => regex({plugins: [recursion]})`a(?R=2)?b(?R=2)?`).toThrow();
+      expect(() => regex({plugins: [recursion]})`(a(?R=2)?)(b(?R=2)?)`).toThrow();
     });
 
     it('should have backrefs refer to their own recursion depth', () => {
@@ -55,13 +66,16 @@ describe('recursion', () => {
       expect('aab').not.toMatch(regex({plugins: [recursion]})`^(?<r>a\g<r&R=2>?b)$`);
     });
 
+    it('should match multiple direct, nonoverlapping recursions', () => {
+      expect('aabbcddee').toMatch(regex({plugins: [recursion]})`^(?<a>a\g<a&R=2>?b)c(?<b>d\g<b&R=2>?e)$`);
+      expect('aabbcddee').toMatch(regex({plugins: [recursion]})`^(?<r>(?<a>a\g<a&R=2>?b)c(?<b>d\g<b&R=2>?e))$`);
+      expect('aabbcddee').toMatch(regex({plugins: [recursion]})`^(?<r>(?<a>a\g<r&R=2>?b))c(?<b>d\g<b&R=2>?e)$`);
+    });
+
     it('should throw for multiple direct, overlapping recursions', () => {
       expect(() => regex({plugins: [recursion]})`a(?R=2)?(?<r>a\g<r&R=2>?)`).toThrow();
       expect(() => regex({plugins: [recursion]})`(?<r>a\g<r&R=2>?\g<r&R=2>?)`).toThrow();
-    });
-
-    it('should throw for multiple direct, nonoverlapping recursions', () => {
-      expect(() => regex({plugins: [recursion]})`(?<r1>a\g<r1&R=2>?)(?<r2>a\g<r2&R=2>?)`).toThrow();
+      expect(() => regex({plugins: [recursion]})`(?<a>(?<b>a\g<b&R=2>?)\g<a&R=2>)`).toThrow();
     });
 
     it('should throw for indirect recursion', () => {
@@ -69,6 +83,7 @@ describe('recursion', () => {
       expect(() => regex({plugins: [recursion]})`\g<a&R=2>(?<a>\g<b&R=2>)(?<b>a\g<a&R=2>?)`).toThrow();
       expect(() => regex({plugins: [recursion]})`(?<a>\g<b&R=2>)(?<b>\g<c&R=2>)(?<c>a\g<a&R=2>?)`).toThrow();
       expect(() => regex({plugins: [recursion]})`(?<a>(?<b>a\g<a&R=2>?)\g<b&R=2>)`).toThrow();
+      expect(() => regex({plugins: [recursion]})`(?<a>(?<b>a\g<b&R=2>?)\g<b&R=2>)`).toThrow();
       expect(() => regex({plugins: [recursion]})`(?<a>\g<b&R=2>(?<b>a\g<a&R=2>?))`).toThrow();
     });
 

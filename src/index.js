@@ -4,6 +4,7 @@ const gRToken = String.raw`\\g<(?<gRNameOrNum>[^>&]+)&R=(?<gRDepth>[^>]+)>`;
 const recursiveToken = String.raw`\(\?R=(?<rDepth>[^\)]+)\)|${gRToken}`;
 const namedCapturingDelim = String.raw`\(\?<(?![=!])(?<captureName>[^>]+)>`;
 const token = new RegExp(String.raw`${namedCapturingDelim}|${recursiveToken}|\\?.`, 'gsu');
+const overlappingRecursionMsg = 'Cannot use multiple overlapping recursions';
 
 /**
 @param {string} expression
@@ -28,13 +29,14 @@ export function recursion(expression) {
     // duplicated by recursion and refer to a group inside the expression being recursed.
     // Additionally, numbered backrefs inside and outside of the recursed expression would need to
     // be adjusted based on any capturing groups added by recursion.
-    throw new Error(`Numbered backrefs cannot be used with recursion; use named backref`);
+    throw new Error(`Numbered backrefs cannot be used with recursion`);
   }
   if (hasUnescaped(expression, String.raw`\(\?\(DEFINE\)`, Context.DEFAULT)) {
     throw new Error(`DEFINE groups cannot be used with recursion`);
   }
   const groupContentsStartPos = new Map();
   const openGroups = [];
+  let hasRecursed = false;
   let numCharClassesOpen = 0;
   let numCaptures = 0;
   let match;
@@ -48,24 +50,45 @@ export function recursion(expression) {
       // `(?R=N)`
       if (rDepth) {
         assertMaxInBounds(rDepth);
+        if (hasRecursed) {
+          throw new Error(overlappingRecursionMsg);
+        }
         const pre = expression.slice(0, match.index);
         const post = expression.slice(token.lastIndex);
-        assertNoFollowingRecursion(post);
+        if (hasUnescaped(post, recursiveToken, Context.DEFAULT)) {
+          throw new Error(overlappingRecursionMsg);
+        }
+        // No need to parse further
         return makeRecursive(pre, post, +rDepth, false);
-      // `\g<name&R=N>`, `\g<N&R=N>`
+      // `\g<name&R=N>`, `\g<number&R=N>`
       } else if (gRNameOrNum) {
         assertMaxInBounds(gRDepth);
-        assertNoFollowingRecursion(expression.slice(token.lastIndex));
-        if (!openGroups.some(g => g.name === gRNameOrNum || g.num === +gRNameOrNum)) {
-          throw new Error(`Recursion via \\g<${gRNameOrNum}&R=${gRDepth}> must be used within the referenced group`);
+        let isWithinReffedGroup = false;
+        for (const g of openGroups) {
+          if (g.name === gRNameOrNum || g.num === +gRNameOrNum) {
+            isWithinReffedGroup = true;
+            if (g.hasRecursedWithin) {
+              throw new Error(overlappingRecursionMsg);
+            }
+            break;
+          }
+        }
+        if (!isWithinReffedGroup) {
+          throw new Error(`Recursive \\g cannot be used outside the referenced group "\\g<${gRNameOrNum}&R=${gRDepth}>"`);
         }
         const startPos = groupContentsStartPos.get(gRNameOrNum);
-        const recursiveGroupContents = getGroupContents(expression, startPos);
-        const pre = expression.slice(startPos, match.index);
-        const post = recursiveGroupContents.slice(pre.length + m.length);
-        return expression.slice(0, startPos) +
-          makeRecursive(pre, post, +gRDepth, true) +
-          expression.slice(startPos + recursiveGroupContents.length);
+        const groupContents = getGroupContents(expression, startPos);
+        const groupContentsPre = expression.slice(startPos, match.index);
+        const groupContentsPost = groupContents.slice(groupContentsPre.length + m.length);
+        const expansion = makeRecursive(groupContentsPre, groupContentsPost, +gRDepth, true);
+        const pre = expression.slice(0, startPos);
+        const post = expression.slice(startPos + groupContents.length);
+        // Modify the string we're looping over
+        expression = `${pre}${expansion}${post}`;
+        // Step forward for the next loop iteration
+        token.lastIndex += expansion.length - m.length - groupContentsPre.length - groupContentsPost.length;
+        openGroups.forEach(g => g.hasRecursedWithin = true);
+        hasRecursed = true;
       } else if (captureName) {
         numCaptures++;
         groupContentsStartPos.set(String(numCaptures), token.lastIndex);
@@ -104,12 +127,6 @@ function assertMaxInBounds(max) {
   max = +max;
   if (max < 2 || max > 100) {
     throw new Error(errMsg);
-  }
-}
-
-function assertNoFollowingRecursion(remainingExpression) {
-  if (hasUnescaped(remainingExpression, recursiveToken, Context.DEFAULT)) {
-    throw new Error('Recursion can only be used once per regex');
   }
 }
 
