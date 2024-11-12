@@ -3,7 +3,7 @@ import {Context, forEachUnescaped, getGroupContents, hasUnescaped, replaceUnesca
 const gRToken = String.raw`\\g<(?<gRNameOrNum>[^>&]+)&R=(?<gRDepth>[^>]+)>`;
 const recursiveToken = String.raw`\(\?R=(?<rDepth>[^\)]+)\)|${gRToken}`;
 const namedCapturingDelim = String.raw`\(\?<(?![=!])(?<captureName>[^>]+)>`;
-const token = new RegExp(String.raw`${namedCapturingDelim}|${recursiveToken}|\\?.`, 'gsu');
+const token = new RegExp(String.raw`${namedCapturingDelim}|${recursiveToken}|\(\?|\\?.`, 'gsu');
 const overlappingRecursionMsg = 'Cannot use multiple overlapping recursions';
 
 /**

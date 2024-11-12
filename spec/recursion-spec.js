@@ -108,6 +108,7 @@ describe('recursion', () => {
     it('should match direct recursion', () => {
       expect('aabb').toMatch(regex({plugins: [recursion]})`^(?<r>a\g<1&R=2>?b)$`);
       expect('aab').not.toMatch(regex({plugins: [recursion]})`^(?<r>a\g<1&R=2>?b)$`);
+      expect(() => regex({plugins: [recursion]})`^(a\g<1&R=2>?b)$`).toThrow();
       expect('aabb').toMatch(regex({plugins: [recursion], disable: {n: true}})`^(a\g<1&R=2>?b)$`);
       expect('aab').not.toMatch(regex({plugins: [recursion], disable: {n: true}})`^(a\g<1&R=2>?b)$`);
     });
