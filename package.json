@@ -17,10 +17,10 @@
     "bundle:global": "esbuild src/index.js --global-name=Regex.plugins --bundle --minify --sourcemap --outfile=dist/regex-recursion.min.js",
     "types": "tsc src/index.js --rootDir src --declaration --allowJs --emitDeclarationOnly --outDir types",
     "prebuild": "rm -rf dist/* types/*",
-    "build": "npm run bundle:global && npm run types",
-    "pretest": "npm run build",
+    "build": "pnpm run bundle:global && pnpm run types",
+    "pretest": "pnpm run build",
     "test": "jasmine",
-    "prepare": "npm test"
+    "prepare": "pnpm test"
   },
   "files": [
     "dist",
