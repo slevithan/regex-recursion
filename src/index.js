@@ -1,9 +1,10 @@
 import {Context, forEachUnescaped, getGroupContents, hasUnescaped, replaceUnescaped} from 'regex-utilities';
 
-const gRToken = String.raw`\\g<(?<gRNameOrNum>[^>&]+)&R=(?<gRDepth>[^>]+)>`;
-const recursiveToken = String.raw`\(\?R=(?<rDepth>[^\)]+)\)|${gRToken}`;
-const namedCapturingDelim = String.raw`\(\?<(?![=!])(?<captureName>[^>]+)>`;
-const token = new RegExp(String.raw`${namedCapturingDelim}|${recursiveToken}|\(\?|\\?.`, 'gsu');
+const r = String.raw;
+const gRToken = r`\\g<(?<gRNameOrNum>[^>&]+)&R=(?<gRDepth>[^>]+)>`;
+const recursiveToken = r`\(\?R=(?<rDepth>[^\)]+)\)|${gRToken}`;
+const namedCapturingDelim = r`\(\?<(?![=!])(?<captureName>[^>]+)>`;
+const token = new RegExp(r`${namedCapturingDelim}|${recursiveToken}|\(\?|\\?.`, 'gsu');
 const overlappingRecursionMsg = 'Cannot use multiple overlapping recursions';
 
 /**
@@ -16,24 +17,10 @@ export function recursion(expression) {
   if (!(new RegExp(recursiveToken, 'su').test(expression))) {
     return expression;
   }
-  if (hasUnescaped(expression, String.raw`\\[1-9]`, Context.DEFAULT)) {
-    // Could add support for numbered backrefs with extra effort, but it's probably not worth it.
-    // To trigger this error, the regex must include recursion and one of the following:
-    // - An interpolated regex that contains a numbered backref (since other numbered backrefs are
-    //   prevented by implicit flag n).
-    // - A numbered backref, when flag n is explicitly disabled.
-    // Note that `regex`'s extended syntax (atomic groups and sometimes subroutines) can also add
-    // numbered backrefs, but those work fine because external plugins like this one run *before*
-    // the transpilation of built-in syntax extensions.
-    // To support numbered backrefs, they would need to be automatically adjusted when they're
-    // duplicated by recursion and refer to a group inside the expression being recursed.
-    // Additionally, numbered backrefs inside and outside of the recursed expression would need to
-    // be adjusted based on any capturing groups added by recursion.
-    throw new Error(`Numbered backrefs cannot be used with recursion`);
+  if (hasUnescaped(expression, r`\(\?\(DEFINE\)`, Context.DEFAULT)) {
+    throw new Error('DEFINE groups cannot be used with recursion');
   }
-  if (hasUnescaped(expression, String.raw`\(\?\(DEFINE\)`, Context.DEFAULT)) {
-    throw new Error(`DEFINE groups cannot be used with recursion`);
-  }
+  const hasNumberedBackref = hasUnescaped(expression, r`\\[1-9]`, Context.DEFAULT);
   const groupContentsStartPos = new Map();
   const openGroups = [];
   let hasRecursed = false;
@@ -52,6 +39,17 @@ export function recursion(expression) {
         assertMaxInBounds(rDepth);
         if (hasRecursed) {
           throw new Error(overlappingRecursionMsg);
+        }
+        if (hasNumberedBackref) {
+          // Could add support for numbered backrefs with extra effort, but it's probably not worth
+          // it. To trigger this error, the regex must include recursion and one of the following:
+          // - An interpolated regex that contains a numbered backref (since other numbered
+          //   backrefs are prevented by implicit flag n).
+          // - A numbered backref, when flag n is explicitly disabled.
+          // Note that Regex+'s extended syntax (atomic groups and sometimes subroutines) can also
+          // add numbered backrefs, but those work fine because external plugins like this one run
+          // *before* the transformation of built-in syntax extensions
+          throw new Error('Numbered backrefs cannot be used with global recursion');
         }
         const pre = expression.slice(0, match.index);
         const post = expression.slice(token.lastIndex);
@@ -74,10 +72,16 @@ export function recursion(expression) {
           }
         }
         if (!isWithinReffedGroup) {
-          throw new Error(`Recursive \\g cannot be used outside the referenced group "\\g<${gRNameOrNum}&R=${gRDepth}>"`);
+          throw new Error(r`Recursive \g cannot be used outside the referenced group "\g<${gRNameOrNum}&R=${gRDepth}>"`);
         }
         const startPos = groupContentsStartPos.get(gRNameOrNum);
         const groupContents = getGroupContents(expression, startPos);
+        if (
+          hasNumberedBackref &&
+          hasUnescaped(groupContents, r`${namedCapturingDelim}|\((?!\?)`, Context.DEFAULT)
+        ) {
+          throw new Error('Numbered backrefs cannot be used with recursion of capturing groups');
+        }
         const groupContentsPre = expression.slice(startPos, match.index);
         const groupContentsPost = groupContents.slice(groupContentsPre.length + m.length);
         const expansion = makeRecursive(groupContentsPre, groupContentsPost, +gRDepth, true);
@@ -170,14 +174,14 @@ function repeatWithDepth(expression, reps, namesInRecursed, direction = 'forward
     const captureNum = depthNum(i);
     result += replaceUnescaped(
       expression,
-      String.raw`${namedCapturingDelim}|\\k<(?<backref>[^>]+)>`,
+      r`${namedCapturingDelim}|\\k<(?<backref>[^>]+)>`,
       ({0: m, groups: {captureName, backref}}) => {
         if (backref && namesInRecursed && !namesInRecursed.has(backref)) {
           // Don't alter backrefs to groups outside the recursed subpattern
           return m;
         }
         const suffix = `_$${captureNum}`;
-        return captureName ? `(?<${captureName}${suffix}>` : `\\k<${backref}${suffix}>`;
+        return captureName ? `(?<${captureName}${suffix}>` : r`\k<${backref}${suffix}>`;
       },
       Context.DEFAULT
     );

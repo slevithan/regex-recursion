@@ -18,14 +18,17 @@ describe('recursion', () => {
     }
   });
 
-  // Documenting current behavior; this could be supported in the future
-  it('should throw for numbered backrefs in interpolated regexes when using recursion', () => {
+  // Documenting current behavior
+  it('should throw for numbered backrefs if the recursed subpattern contains captures', () => {
     expect(() => regex({plugins: [recursion]})`a(?R=2)?b${/()\1/}`).toThrow();
     expect(() => regex({plugins: [recursion]})`(?<n>a|\g<n&R=2>${/()\1/})`).toThrow();
-    expect(() => regex({plugins: [recursion]})`(?<n>a|\g<n&R=2>)${/()\1/}`).toThrow();
     expect(() => regex({plugins: [recursion]})`${/()\1/}a(?R=2)?b`).toThrow();
     expect(() => regex({plugins: [recursion]})`(?<n>${/()\1/}a|\g<n&R=2>)`).toThrow();
-    expect(() => regex({plugins: [recursion]})`${/()\1/}(?<n>a|\g<n&R=2>)`).toThrow();
+  });
+
+  it('should allow numbered backrefs if the recursed subpattern contains no captures', () => {
+    expect(() => regex({plugins: [recursion]})`(?<n>a|\g<n&R=2>)${/()\1/}`).not.toThrow();
+    expect(() => regex({plugins: [recursion]})`${/()\1/}(?<n>a|\g<n&R=2>)`).not.toThrow();
   });
 
   it('should throw for subroutine definition groups when using recursion', () => {
