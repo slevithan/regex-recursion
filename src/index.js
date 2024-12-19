@@ -6,12 +6,18 @@ const recursiveToken = r`\(\?R=(?<rDepth>[^\)]+)\)|${gRToken}`;
 const namedCapturingDelim = r`\(\?<(?![=!])(?<captureName>[^>]+)>`;
 const token = new RegExp(r`${namedCapturingDelim}|${recursiveToken}|\(\?|\\?.`, 'gsu');
 const overlappingRecursionMsg = 'Cannot use multiple overlapping recursions';
+// See <github.com/slevithan/regex/blob/main/src/subclass.js>
+const emulationGroupMarker = '$E$';
 
 /**
 @param {string} expression
+@param {{
+  flags?: string;
+  useEmulationGroups?: boolean;
+}} [data]
 @returns {string}
 */
-export function recursion(expression) {
+export function recursion(expression, data) {
   // Keep the initial fail-check (which avoids unneeded processing) as fast as possible by testing
   // without the accuracy improvement of using `hasUnescaped` with default `Context`
   if (!(new RegExp(recursiveToken, 'su').test(expression))) {
@@ -20,6 +26,7 @@ export function recursion(expression) {
   if (hasUnescaped(expression, r`\(\?\(DEFINE\)`, Context.DEFAULT)) {
     throw new Error('DEFINE groups cannot be used with recursion');
   }
+  const useEmulationGroups = !!data?.useEmulationGroups;
   const hasNumberedBackref = hasUnescaped(expression, r`\\[1-9]`, Context.DEFAULT);
   const groupContentsStartPos = new Map();
   const openGroups = [];
@@ -57,7 +64,7 @@ export function recursion(expression) {
           throw new Error(overlappingRecursionMsg);
         }
         // No need to parse further
-        return makeRecursive(pre, post, +rDepth, false);
+        return makeRecursive(pre, post, +rDepth, false, useEmulationGroups);
       // `\g<name&R=N>`, `\g<number&R=N>`
       } else if (gRNameOrNum) {
         assertMaxInBounds(gRDepth);
@@ -84,7 +91,7 @@ export function recursion(expression) {
         }
         const groupContentsPre = expression.slice(startPos, match.index);
         const groupContentsPost = groupContents.slice(groupContentsPre.length + m.length);
-        const expansion = makeRecursive(groupContentsPre, groupContentsPost, +gRDepth, true);
+        const expansion = makeRecursive(groupContentsPre, groupContentsPost, +gRDepth, true, useEmulationGroups);
         const pre = expression.slice(0, startPos);
         const post = expression.slice(startPos + groupContents.length);
         // Modify the string we're looping over
@@ -139,9 +146,10 @@ function assertMaxInBounds(max) {
 @param {string} post
 @param {number} maxDepth
 @param {boolean} isSubpattern
+@param {boolean} useEmulationGroups
 @returns {string}
 */
-function makeRecursive(pre, post, maxDepth, isSubpattern) {
+function makeRecursive(pre, post, maxDepth, isSubpattern, useEmulationGroups) {
   const namesInRecursed = new Set();
   // Avoid this work if not needed
   if (isSubpattern) {
@@ -153,9 +161,9 @@ function makeRecursive(pre, post, maxDepth, isSubpattern) {
   // Depth 2: 'pre(?:pre(?:)post)post'
   // Depth 3: 'pre(?:pre(?:pre(?:)post)post)post'
   return `${pre}${
-    repeatWithDepth(`(?:${pre}`, reps, (isSubpattern ? namesInRecursed : null))
+    repeatWithDepth(`(?:${pre}`, reps, (isSubpattern ? namesInRecursed : null), 'forward', useEmulationGroups)
   }(?:)${
-    repeatWithDepth(`${post})`, reps, (isSubpattern ? namesInRecursed : null), 'backward')
+    repeatWithDepth(`${post})`, reps, (isSubpattern ? namesInRecursed : null), 'backward', useEmulationGroups)
   }${post}`;
 }
 
@@ -163,10 +171,11 @@ function makeRecursive(pre, post, maxDepth, isSubpattern) {
 @param {string} expression
 @param {number} reps
 @param {Set<string> | null} namesInRecursed
-@param {'forward' | 'backward'} [direction]
+@param {'forward' | 'backward'} direction
+@param {boolean} useEmulationGroups
 @returns {string}
 */
-function repeatWithDepth(expression, reps, namesInRecursed, direction = 'forward') {
+function repeatWithDepth(expression, reps, namesInRecursed, direction, useEmulationGroups) {
   const startNum = 2;
   const depthNum = i => direction === 'backward' ? reps - i + startNum - 1 : i + startNum;
   let result = '';
@@ -174,14 +183,19 @@ function repeatWithDepth(expression, reps, namesInRecursed, direction = 'forward
     const captureNum = depthNum(i);
     result += replaceUnescaped(
       expression,
-      r`${namedCapturingDelim}|\\k<(?<backref>[^>]+)>`,
+      r`${namedCapturingDelim}|\\k<(?<backref>[^>]+)>${useEmulationGroups ? r`|\((?!\?)` : ''}`,
       ({0: m, groups: {captureName, backref}}) => {
         if (backref && namesInRecursed && !namesInRecursed.has(backref)) {
           // Don't alter backrefs to groups outside the recursed subpattern
           return m;
         }
+        if (m === '(') {
+          return `(${emulationGroupMarker}`;
+        }
         const suffix = `_$${captureNum}`;
-        return captureName ? `(?<${captureName}${suffix}>` : r`\k<${backref}${suffix}>`;
+        return captureName ?
+          `(?<${captureName}${suffix}>${useEmulationGroups ? emulationGroupMarker : ''}` :
+          r`\k<${backref}${suffix}>`;
       },
       Context.DEFAULT
     );

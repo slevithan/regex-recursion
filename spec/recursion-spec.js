@@ -124,6 +124,26 @@ describe('recursion', () => {
     });
   });
 
+  describe('subclass option', () => {
+    it('should exclude duplicate numbered captures', () => {
+      // Subpattern recursion
+      expect(regex({plugins: [recursion], subclass: false, disable: {n: true}})`((a)\g<1&R=2>?)`.exec('aa')).toHaveSize(4);
+      expect(regex({plugins: [recursion], subclass: true, disable: {n: true}})`((a)\g<1&R=2>?)`.exec('aa')).toHaveSize(3);
+      // Global recursion
+      expect(regex({plugins: [recursion], subclass: false, disable: {n: true}})`(a)(?R=2)?`.exec('aa')).toHaveSize(3);
+      expect(regex({plugins: [recursion], subclass: true, disable: {n: true}})`(a)(?R=2)?`.exec('aa')).toHaveSize(2);
+    });
+
+    it('should exclude duplicate named captures', () => {
+      // Subpattern recursion
+      expect(regex({plugins: [recursion], subclass: false})`(?<r>(?<d>a)\g<r&R=2>?)`.exec('aa')).toHaveSize(4);
+      expect(regex({plugins: [recursion], subclass: true})`(?<r>(?<d>a)\g<r&R=2>?)`.exec('aa')).toHaveSize(3);
+      // Global recursion
+      expect(regex({plugins: [recursion], subclass: false})`(?<d>a)(?R=2)?`.exec('aa')).toHaveSize(3);
+      expect(regex({plugins: [recursion], subclass: true})`(?<d>a)(?R=2)?`.exec('aa')).toHaveSize(2);
+    });
+  });
+
   describe('readme examples', () => {
     it('should match an equal number of two different subpatterns', () => {
       expect(regex({plugins: [recursion]})`a(?R=50)?b`.exec('test aaaaaabbb')[0]).toBe('aaabbb');
