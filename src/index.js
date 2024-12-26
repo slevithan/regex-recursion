@@ -7,6 +7,8 @@ const recursiveToken = r`\(\?R=(?<rDepth>[^\)]+)\)|${gRToken}`;
 const namedCapturingDelim = r`\(\?<(?![=!])(?<captureName>[^>]+)>`;
 const token = new RegExp(r`${namedCapturingDelim}|${recursiveToken}|\(\?|\\?.`, 'gsu');
 const overlappingRecursionMsg = 'Cannot use multiple overlapping recursions';
+// Support emulation groups with transfer marker prefix
+const emulationGroupMarkerRe = new RegExp(r`(?:\$[1-9]\d*)?${emulationGroupMarker.replace(/\$/g, r`\$`)}`, 'y');
 
 /**
 @param {string} expression
@@ -101,6 +103,7 @@ export function recursion(expression, data) {
         hasRecursed = true;
       } else if (captureName) {
         numCaptures++;
+        // NOTE: Not currently handling *named* emulation groups that already exist in the pattern
         groupContentsStartPos.set(String(numCaptures), token.lastIndex);
         groupContentsStartPos.set(captureName, token.lastIndex);
         openGroups.push({
@@ -185,16 +188,20 @@ function repeatWithDepth(expression, reps, namesInRecursed, direction, useEmulat
     const captureNum = depthNum(i);
     result += replaceUnescaped(
       expression,
-      r`${namedCapturingDelim}|\\k<(?<backref>[^>]+)>${useEmulationGroups ? r`|\((?!\?)` : ''}`,
-      ({0: m, index, groups: {captureName, backref}}) => {
+      // NOTE: Not currently handling *named* emulation groups that already exist in the pattern
+      r`${namedCapturingDelim}|\\k<(?<backref>[^>]+)>${
+        useEmulationGroups ? r`|(?<unnamed>\()(?!\?)(?:${emulationGroupMarkerRe.source})?` : ''
+      }`,
+      ({0: m, index, groups: {captureName, backref, unnamed}}) => {
         if (backref && namesInRecursed && !namesInRecursed.has(backref)) {
           // Don't alter backrefs to groups outside the recursed subpattern
           return m;
         }
-        // `(` only matched if `useEmulationGroups`
-        if (m === '(') {
-          // Add an emulation group marker if there isn't one already
-          return `(${emulationGroupMarkerLength(expression, index + 1) ? '' : emulationGroupMarker}`;
+        // Only matches unnamed capture delim if `useEmulationGroups`
+        if (unnamed) {
+          // Add an emulation group marker, possibly replacing an existing marker (removes any
+          // transfer prefix)
+          return `(${emulationGroupMarker}`;
         }
         const suffix = `_$${captureNum}`;
         return captureName ?
@@ -206,8 +213,6 @@ function repeatWithDepth(expression, reps, namesInRecursed, direction, useEmulat
   }
   return result;
 }
-
-const emulationGroupMarkerRe = new RegExp(r`(?:\$[1-9]\d*)?${emulationGroupMarker.replace(/\$/g, r`\$`)}`, 'y');
 
 function emulationGroupMarkerLength(expression, index) {
   emulationGroupMarkerRe.lastIndex = index;
