@@ -112,7 +112,10 @@ export function recursion(expression, data) {
         const isUnnamedCapture = m === '(';
         if (isUnnamedCapture) {
           numCaptures++;
-          groupContentsStartPos.set(String(numCaptures), token.lastIndex);
+          groupContentsStartPos.set(
+            String(numCaptures),
+            token.lastIndex + (useEmulationGroups && expression.startsWith(emulationGroupMarker, token.lastIndex) ? emulationGroupMarker.length : 0)
+          );
         }
         openGroups.push(isUnnamedCapture ? {num: numCaptures} : {});
       } else if (m === ')') {
@@ -184,13 +187,13 @@ function repeatWithDepth(expression, reps, namesInRecursed, direction, useEmulat
     result += replaceUnescaped(
       expression,
       r`${namedCapturingDelim}|\\k<(?<backref>[^>]+)>${useEmulationGroups ? r`|\((?!\?)` : ''}`,
-      ({0: m, groups: {captureName, backref}}) => {
+      ({0: m, index, groups: {captureName, backref}}) => {
         if (backref && namesInRecursed && !namesInRecursed.has(backref)) {
           // Don't alter backrefs to groups outside the recursed subpattern
           return m;
         }
         if (m === '(') {
-          return `(${emulationGroupMarker}`;
+          return `(${expression.startsWith(emulationGroupMarker, index + 1) ? '' : emulationGroupMarker}`;
         }
         const suffix = `_$${captureNum}`;
         return captureName ?

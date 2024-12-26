@@ -1,6 +1,8 @@
 import {regex} from 'regex';
 import {recursion} from '../src/index.js';
 
+const emulationGroupMarker = '$E$';
+
 describe('recursion', () => {
   it('should allow recursion depths 2-100', () => {
     const values = ['2', '100'];
@@ -141,6 +143,11 @@ describe('recursion', () => {
       // Global recursion
       expect(regex({plugins: [recursion], subclass: false})`(?<d>a)(?R=2)?`.exec('aa')).toHaveSize(3);
       expect(regex({plugins: [recursion], subclass: true})`(?<d>a)(?R=2)?`.exec('aa')).toHaveSize(2);
+    });
+
+    it('should handle recursion of emulation groups', () => {
+      expect(regex({plugins: [recursion], subclass: true, disable: {n: true}})({raw: [`^(${emulationGroupMarker}a\\g<1&R=2>?b)$`]}).exec('aabb')).toHaveSize(1);
+      expect(regex({plugins: [recursion], subclass: true, disable: {n: true}})({raw: [`^(${emulationGroupMarker}a(${emulationGroupMarker}x)\\g<1&R=2>?b)$`]}).exec('axaxbb')).toHaveSize(1);
     });
   });
 
