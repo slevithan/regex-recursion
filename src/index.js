@@ -1,4 +1,5 @@
 import {Context, forEachUnescaped, getGroupContents, hasUnescaped, replaceUnescaped} from 'regex-utilities';
+import {emulationGroupMarker} from 'regex/internals';
 
 const r = String.raw;
 const gRToken = r`\\g<(?<gRNameOrNum>[^>&]+)&R=(?<gRDepth>[^>]+)>`;
@@ -6,8 +7,6 @@ const recursiveToken = r`\(\?R=(?<rDepth>[^\)]+)\)|${gRToken}`;
 const namedCapturingDelim = r`\(\?<(?![=!])(?<captureName>[^>]+)>`;
 const token = new RegExp(r`${namedCapturingDelim}|${recursiveToken}|\(\?|\\?.`, 'gsu');
 const overlappingRecursionMsg = 'Cannot use multiple overlapping recursions';
-// See <github.com/slevithan/regex/blob/main/src/subclass.js>
-const emulationGroupMarker = '$E$';
 
 /**
 @param {string} expression
@@ -114,7 +113,7 @@ export function recursion(expression, data) {
           numCaptures++;
           groupContentsStartPos.set(
             String(numCaptures),
-            token.lastIndex + (useEmulationGroups && expression.startsWith(emulationGroupMarker, token.lastIndex) ? emulationGroupMarker.length : 0)
+            token.lastIndex + (useEmulationGroups ? emulationGroupMarkerLength(expression, token.lastIndex) : 0)
           );
         }
         openGroups.push(isUnnamedCapture ? {num: numCaptures} : {});
@@ -192,8 +191,10 @@ function repeatWithDepth(expression, reps, namesInRecursed, direction, useEmulat
           // Don't alter backrefs to groups outside the recursed subpattern
           return m;
         }
+        // `(` only matched if `useEmulationGroups`
         if (m === '(') {
-          return `(${expression.startsWith(emulationGroupMarker, index + 1) ? '' : emulationGroupMarker}`;
+          // Add an emulation group marker if there isn't one already
+          return `(${emulationGroupMarkerLength(expression, index + 1) ? '' : emulationGroupMarker}`;
         }
         const suffix = `_$${captureNum}`;
         return captureName ?
@@ -204,4 +205,12 @@ function repeatWithDepth(expression, reps, namesInRecursed, direction, useEmulat
     );
   }
   return result;
+}
+
+const emulationGroupMarkerRe = new RegExp(r`(?:\$[1-9]\d*)?${emulationGroupMarker.replace(/\$/g, r`\$`)}`, 'y');
+
+function emulationGroupMarkerLength(expression, index) {
+  emulationGroupMarkerRe.lastIndex = index;
+  const match = emulationGroupMarkerRe.exec(expression);
+  return match ? match[0].length : 0;
 }

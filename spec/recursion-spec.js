@@ -1,7 +1,6 @@
-import {regex} from 'regex';
 import {recursion} from '../src/index.js';
-
-const emulationGroupMarker = '$E$';
+import {regex} from 'regex';
+import {emulationGroupMarker} from 'regex/internals';
 
 describe('recursion', () => {
   it('should allow recursion depths 2-100', () => {
@@ -127,7 +126,7 @@ describe('recursion', () => {
   });
 
   describe('subclass option', () => {
-    it('should exclude duplicate numbered captures', () => {
+    it('should exclude duplicated numbered captures from result subpatterns', () => {
       // Subpattern recursion
       expect(regex({plugins: [recursion], subclass: false, disable: {n: true}})`((a)\g<1&R=2>?)`.exec('aa')).toHaveSize(4);
       expect(regex({plugins: [recursion], subclass: true, disable: {n: true}})`((a)\g<1&R=2>?)`.exec('aa')).toHaveSize(3);
@@ -136,7 +135,7 @@ describe('recursion', () => {
       expect(regex({plugins: [recursion], subclass: true, disable: {n: true}})`(a)(?R=2)?`.exec('aa')).toHaveSize(2);
     });
 
-    it('should exclude duplicate named captures', () => {
+    it('should exclude duplicated named captures from result subpatterns', () => {
       // Subpattern recursion
       expect(regex({plugins: [recursion], subclass: false})`(?<r>(?<d>a)\g<r&R=2>?)`.exec('aa')).toHaveSize(4);
       expect(regex({plugins: [recursion], subclass: true})`(?<r>(?<d>a)\g<r&R=2>?)`.exec('aa')).toHaveSize(3);
@@ -148,6 +147,12 @@ describe('recursion', () => {
     it('should handle recursion of emulation groups', () => {
       expect(regex({plugins: [recursion], subclass: true, disable: {n: true}})({raw: [`^(${emulationGroupMarker}a\\g<1&R=2>?b)$`]}).exec('aabb')).toHaveSize(1);
       expect(regex({plugins: [recursion], subclass: true, disable: {n: true}})({raw: [`^(${emulationGroupMarker}a(${emulationGroupMarker}x)\\g<1&R=2>?b)$`]}).exec('axaxbb')).toHaveSize(1);
+    });
+
+    it('should handle recursion of emulation groups with transfer', () => {
+      const transferTo1 = `$1${emulationGroupMarker}`;
+      expect(regex({plugins: [recursion], subclass: true, disable: {n: true}})({raw: [`^()(${transferTo1}a\\g<2&R=2>?b)$`]}).exec('aabb')).toHaveSize(2);
+      expect(regex({plugins: [recursion], subclass: true, disable: {n: true}})({raw: [`^()(${transferTo1}a(${transferTo1}x)\\g<2&R=2>?b)$`]}).exec('axaxbb')).toHaveSize(2);
     });
   });
 
