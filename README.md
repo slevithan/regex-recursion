@@ -56,16 +56,11 @@ re.exec('test aaaaaabbb')[0];
 
 #### As the entire string
 
+Use `\g<name&R=N>` to recursively match just the specified group.
+
 ```js
 const re = regex({plugins: [recursion]})`
-  ^
-  (?<balanced>
-    a
-    # Recursively match just the specified group
-    \g<balanced&R=50>?
-    b
-  )
-  $
+  ^ (?<r> a \g<r&R=50>? b) $
 `;
 re.test('aaabbb'); // → true
 re.test('aaabb'); // → false
@@ -76,7 +71,7 @@ re.test('aaabb'); // → false
 ```js
 // Matches all balanced parentheses up to depth 50
 const parens = regex({flags: 'g', plugins: [recursion]})`
-  \( ( [^\(\)] | (?R=50) )* \)
+  \( ([^\(\)] | (?R=50))* \)
 `;
 
 'test ) (balanced ((parens))) () ((a)) ( (b)'.match(parens);
@@ -92,13 +87,13 @@ Following is an alternative that matches the same strings, but adds a nested qua
 
 ```js
 const parens = regex({flags: 'g', plugins: [recursion]})`
-  \( ( (?> [^\(\)]+ ) | (?R=50) )* \)
+  \( ((?> [^\(\)]+) | (?R=50))* \)
 `;
 ```
 
-This matches sequences of non-parens in one step with the nested `+` quantifier, and avoids backtracking into these sequences by wrapping it with an atomic group `(?>…)`. Given that what the nested quantifier `+` matches overlaps with what the outer group can match with its `*` quantifier, the atomic group is important here. It avoids exponential backtracking when matching long strings with unbalanced parens.
+This matches sequences of non-parentheses in one step with the nested `+` quantifier, and avoids backtracking into these sequences by wrapping it with an atomic group `(?>…)`. Given that what the nested quantifier `+` matches overlaps with what the outer group can match with its `*` quantifier, the atomic group is important here. It avoids exponential backtracking when matching long strings with unbalanced parentheses.
 
-[Atomic groups](https://github.com/slevithan/regex#atomic-groups) are provided by the base `regex` library.
+[Atomic groups](https://github.com/slevithan/regex#atomic-groups) are provided by the base Regex+ library.
 
 ### Match palindromes
 
@@ -106,9 +101,9 @@ This matches sequences of non-parens in one step with the nested `+` quantifier,
 
 ```js
 const palindromes = regex({flags: 'gi', plugins: [recursion]})`
-  (?<char> \w )
+  (?<char> \w)
   # Recurse, or match a lone unbalanced char in the middle
-  ( (?R=15) | \w? )
+  ((?R=15) | \w?)
   \k<char>
 `;
 
@@ -116,7 +111,7 @@ const palindromes = regex({flags: 'gi', plugins: [recursion]})`
 // → ['Racecar', 'ABBA', 'edivide']
 ```
 
-In the example above, the max length of matched palindromes is 31. That's because it sets the max recursion depth to 15 with `(?R=15)`. So, depth 15 × 2 chars (left + right) for each depth level + 1 optional unbalanced char in the middle = 31. To match longer palindromes, the max recursion depth can be increased to a max of 100, which would enable matching palindromes up to 201 characters long.
+Palindromes are sequences that read the same backwards as forwards. In the example above, the max length of matched palindromes is 31. That's because it sets the max recursion depth to 15 with `(?R=15)`. So, depth 15 × 2 chars (left + right) for each depth level + 1 optional unbalanced char in the middle = 31. To match longer palindromes, the max recursion depth can be increased to a max of 100, which would enable matching palindromes up to 201 characters long.
 
 #### Match palindromes as complete words
 
@@ -124,8 +119,8 @@ In the example above, the max length of matched palindromes is 31. That's becaus
 const palindromeWords = regex({flags: 'gi', plugins: [recursion]})`
   \b
   (?<palindrome>
-    (?<char> \w )
-    ( \g<palindrome&R=15> | \w? )
+    (?<char> \w)
+    (\g<palindrome&R=15> | \w?)
     \k<char>
   )
   \b
