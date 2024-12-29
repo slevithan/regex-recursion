@@ -57,19 +57,19 @@ re.exec('test aaaaaabbb')[0];
 #### As the entire string
 
 ```js
-const re = regex({plugins: [recursion]})`^
+const re = regex({plugins: [recursion]})`
+  ^
   (?<balanced>
     a
     # Recursively match just the specified group
     \g<balanced&R=50>?
     b
   )
-$`;
+  $
+`;
 re.test('aaabbb'); // → true
 re.test('aaabb'); // → false
 ```
-
-Notice the `^` and `$` anchors outside of the recursive subpattern.
 
 ### Match balanced parentheses
 
@@ -121,19 +121,19 @@ In the example above, the max length of matched palindromes is 31. That's becaus
 #### Match palindromes as complete words
 
 ```js
-const palindromeWords = regex({flags: 'gi', plugins: [recursion]})`\b
+const palindromeWords = regex({flags: 'gi', plugins: [recursion]})`
+  \b
   (?<palindrome>
     (?<char> \w )
     ( \g<palindrome&R=15> | \w? )
     \k<char>
   )
-\b`;
+  \b
+`;
 
 'Racecar, ABBA, and redivided'.match(palindromeWords);
 // → ['Racecar', 'ABBA']
 ```
-
-Notice the `\b` word boundaries outside of the recursive subpattern.
 
 <!-- Badges -->
 
