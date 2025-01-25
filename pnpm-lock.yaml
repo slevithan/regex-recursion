@@ -8,9 +8,6 @@ importers:
 
   .:
     dependencies:
-      regex:
-        specifier: ^5.1.1
-        version: 5.1.1
       regex-utilities:
         specifier: ^2.3.0
         version: 2.3.0
@@ -21,6 +18,9 @@ importers:
       jasmine:
         specifier: ^5.5.0
         version: 5.5.0
+      regex:
+        specifier: file:../regex
+        version: file:../regex
       typescript:
         specifier: ~5.7.2
         version: 5.7.2
@@ -282,8 +282,8 @@ packages:
   regex-utilities@2.3.0:
     resolution: {integrity: sha512-8VhliFJAWRaUiVvREIiW2NXXTmHs4vMNnSzuJVhscgmGav3g9VDxLrQndI3dZZVVdp0ZO/5v0xmX516/7M9cng==}
 
-  regex@5.1.1:
-    resolution: {integrity: sha512-dN5I359AVGPnwzJm2jN1k0W9LPZ+ePvoOeVMMfqIMFz53sSwXkxaJoxr50ptnsC771lK95BnTrVSZxq0b9yCGw==}
+  regex@file:../regex:
+    resolution: {directory: ../regex, type: directory}
 
   shebang-command@2.0.0:
     resolution: {integrity: sha512-kHxr2zZpYtdmrN1qDjrrX/Z1rR1kG8Dx+gkpK1G4eXmvXswmcE1hTWBWYUzlraYw1/yZp6YuDY77YtvbN0dmDA==}
@@ -532,7 +532,7 @@ snapshots:
 
   regex-utilities@2.3.0: {}
 
-  regex@5.1.1:
+  regex@file:../regex:
     dependencies:
       regex-utilities: 2.3.0
 

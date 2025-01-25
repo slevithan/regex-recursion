@@ -1,6 +1,5 @@
 import {recursion} from '../src/index.js';
 import {regex} from 'regex';
-import {emulationGroupMarker} from 'regex/internals';
 
 describe('recursion', () => {
   it('should allow recursion depths 2-100', () => {
@@ -130,9 +129,11 @@ describe('recursion', () => {
       // Subpattern recursion
       expect(regex({plugins: [recursion], subclass: false, disable: {n: true}})`((a)\g<1&R=2>?)`.exec('aa')).toHaveSize(4);
       expect(regex({plugins: [recursion], subclass: true, disable: {n: true}})`((a)\g<1&R=2>?)`.exec('aa')).toHaveSize(3);
+      expect(regex({plugins: [recursion], subclass: true, disable: {n: true}})`((a)\g<1&R=2>?)(b)`.exec('aab')[3]).toBe('b');
       // Global recursion
       expect(regex({plugins: [recursion], subclass: false, disable: {n: true}})`(a)(?R=2)?`.exec('aa')).toHaveSize(3);
       expect(regex({plugins: [recursion], subclass: true, disable: {n: true}})`(a)(?R=2)?`.exec('aa')).toHaveSize(2);
+      expect(regex({plugins: [recursion], subclass: true, disable: {n: true}})`(?R=2)?(.)`.exec('ab')[1]).toBe('b');
     });
 
     it('should exclude duplicated named captures from result subpatterns', () => {
@@ -144,15 +145,9 @@ describe('recursion', () => {
       expect(regex({plugins: [recursion], subclass: true})`(?<d>a)(?R=2)?`.exec('aa')).toHaveSize(2);
     });
 
-    it('should handle recursion of emulation groups', () => {
-      expect(regex({plugins: [recursion], subclass: true, disable: {n: true}})({raw: [`^(${emulationGroupMarker}a\\g<1&R=2>?b)$`]}).exec('aabb')).toHaveSize(1);
-      expect(regex({plugins: [recursion], subclass: true, disable: {n: true}})({raw: [`^(${emulationGroupMarker}a(${emulationGroupMarker}x)\\g<1&R=2>?b)$`]}).exec('axaxbb')).toHaveSize(1);
-    });
-
-    it('should handle recursion of emulation groups with transfer', () => {
-      const transferTo1 = `$1${emulationGroupMarker}`;
-      expect(regex({plugins: [recursion], subclass: true, disable: {n: true}})({raw: [`^()(${transferTo1}a\\g<2&R=2>?b)$`]}).exec('aabb')).toHaveSize(2);
-      expect(regex({plugins: [recursion], subclass: true, disable: {n: true}})({raw: [`^()(${transferTo1}a(${transferTo1}x)\\g<2&R=2>?b)$`]}).exec('axaxbb')).toHaveSize(2);
+    it('should handle recursion that contains emulation groups', () => {
+      expect(regex({plugins: [recursion], subclass: true, disable: {n: true}})`^((?>a)\g<1&R=2>?b)$`.exec('aabb')).toHaveSize(2);
+      expect(regex({plugins: [recursion], subclass: true, disable: {n: true}})`^((?>a)(?>x)\g<1&R=2>?b)$`.exec('axaxbb')).toHaveSize(2);
     });
   });
 

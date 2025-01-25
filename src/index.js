@@ -1,5 +1,4 @@
 import {Context, forEachUnescaped, getGroupContents, hasUnescaped, replaceUnescaped} from 'regex-utilities';
-import {emulationGroupMarker} from 'regex/internals';
 
 const r = String.raw;
 const gRToken = r`\\g<(?<gRNameOrNum>[^>&]+)&R=(?<gRDepth>[^>]+)>`;
@@ -7,33 +6,39 @@ const recursiveToken = r`\(\?R=(?<rDepth>[^\)]+)\)|${gRToken}`;
 const namedCapturingDelim = r`\(\?<(?![=!])(?<captureName>[^>]+)>`;
 const token = new RegExp(r`${namedCapturingDelim}|${recursiveToken}|\(\?|\\?.`, 'gsu');
 const overlappingRecursionMsg = 'Cannot use multiple overlapping recursions';
-// Support emulation groups with transfer marker prefix
-const emulationGroupMarkerRe = new RegExp(r`(?:\$[1-9]\d*)?${emulationGroupMarker.replace(/\$/g, r`\$`)}`, 'y');
 
 /**
 @param {string} expression
 @param {{
   flags?: string;
-  useEmulationGroups?: boolean;
+  hiddenCaptureNums?: Array<number> | null;
 }} [data]
-@returns {string}
+@returns {{
+  hiddenCaptureNums: Array<number> | null;
+  pattern: string;
+}}
 */
-export function recursion(expression, data) {
+function recursion(expression, data) {
+  const hiddenCaptureNums = data?.hiddenCaptureNums ?? null;
   // Keep the initial fail-check (which avoids unneeded processing) as fast as possible by testing
   // without the accuracy improvement of using `hasUnescaped` with default `Context`
   if (!(new RegExp(recursiveToken, 'su').test(expression))) {
-    return expression;
+    return {
+      hiddenCaptureNums,
+      pattern: expression,
+    };
   }
   if (hasUnescaped(expression, r`\(\?\(DEFINE\)`, Context.DEFAULT)) {
     throw new Error('DEFINE groups cannot be used with recursion');
   }
-  const useEmulationGroups = !!data?.useEmulationGroups;
+
+  const addedHiddenCaptureNums = [];
   const hasNumberedBackref = hasUnescaped(expression, r`\\[1-9]`, Context.DEFAULT);
   const groupContentsStartPos = new Map();
   const openGroups = [];
   let hasRecursed = false;
   let numCharClassesOpen = 0;
-  let numCaptures = 0;
+  let numCapturesPassed = 0;
   let match;
   token.lastIndex = 0;
   while ((match = token.exec(expression))) {
@@ -64,8 +69,9 @@ export function recursion(expression, data) {
         if (hasUnescaped(post, recursiveToken, Context.DEFAULT)) {
           throw new Error(overlappingRecursionMsg);
         }
+        expression = makeRecursive(pre, post, +rDepth, false, hiddenCaptureNums, addedHiddenCaptureNums, numCapturesPassed);
         // No need to parse further
-        return makeRecursive(pre, post, +rDepth, false, useEmulationGroups);
+        break;
       // `\g<name&R=N>`, `\g<number&R=N>`
       } else if (gRNameOrNum) {
         assertMaxInBounds(gRDepth);
@@ -92,7 +98,15 @@ export function recursion(expression, data) {
         }
         const groupContentsPre = expression.slice(startPos, match.index);
         const groupContentsPost = groupContents.slice(groupContentsPre.length + m.length);
-        const expansion = makeRecursive(groupContentsPre, groupContentsPost, +gRDepth, true, useEmulationGroups);
+        const expansion = makeRecursive(
+          groupContentsPre,
+          groupContentsPost,
+          +gRDepth,
+          true,
+          hiddenCaptureNums,
+          addedHiddenCaptureNums,
+          numCapturesPassed
+        );
         const pre = expression.slice(0, startPos);
         const post = expression.slice(startPos + groupContents.length);
         // Modify the string we're looping over
@@ -102,24 +116,20 @@ export function recursion(expression, data) {
         openGroups.forEach(g => g.hasRecursedWithin = true);
         hasRecursed = true;
       } else if (captureName) {
-        numCaptures++;
-        // NOTE: Not currently handling *named* emulation groups that already exist in the pattern
-        groupContentsStartPos.set(String(numCaptures), token.lastIndex);
+        numCapturesPassed++;
+        groupContentsStartPos.set(String(numCapturesPassed), token.lastIndex);
         groupContentsStartPos.set(captureName, token.lastIndex);
         openGroups.push({
-          num: numCaptures,
+          num: numCapturesPassed,
           name: captureName,
         });
       } else if (m.startsWith('(')) {
         const isUnnamedCapture = m === '(';
         if (isUnnamedCapture) {
-          numCaptures++;
-          groupContentsStartPos.set(
-            String(numCaptures),
-            token.lastIndex + (useEmulationGroups ? emulationGroupMarkerLength(expression, token.lastIndex) : 0)
-          );
+          numCapturesPassed++;
+          groupContentsStartPos.set(String(numCapturesPassed), token.lastIndex);
         }
-        openGroups.push(isUnnamedCapture ? {num: numCaptures} : {});
+        openGroups.push(isUnnamedCapture ? {num: numCapturesPassed} : {});
       } else if (m === ')') {
         openGroups.pop();
       }
@@ -129,7 +139,14 @@ export function recursion(expression, data) {
     }
   }
 
-  return expression;
+  if (hiddenCaptureNums) {
+    hiddenCaptureNums.push(...addedHiddenCaptureNums);
+  }
+
+  return {
+    hiddenCaptureNums,
+    pattern: expression,
+  };
 }
 
 /**
@@ -151,62 +168,71 @@ function assertMaxInBounds(max) {
 @param {string} post
 @param {number} maxDepth
 @param {boolean} isSubpattern
-@param {boolean} useEmulationGroups
+@param {Array<number> | null} hiddenCaptureNums
+@param {Array<number>} addedHiddenCaptureNums
+@param {number} numCapturesPassed
 @returns {string}
 */
-function makeRecursive(pre, post, maxDepth, isSubpattern, useEmulationGroups) {
+function makeRecursive(pre, post, maxDepth, isSubpattern, hiddenCaptureNums, addedHiddenCaptureNums, numCapturesPassed) {
   const namesInRecursed = new Set();
-  // Avoid this work if not needed
+  // Can skip this work if not needed
   if (isSubpattern) {
     forEachUnescaped(pre + post, namedCapturingDelim, ({groups: {captureName}}) => {
       namesInRecursed.add(captureName);
     }, Context.DEFAULT);
   }
-  const reps = maxDepth - 1;
+  const rest = [
+    maxDepth - 1, // reps
+    isSubpattern ? namesInRecursed : null, // namesInRecursed
+    hiddenCaptureNums,
+    addedHiddenCaptureNums,
+    numCapturesPassed,
+  ];
   // Depth 2: 'pre(?:pre(?:)post)post'
   // Depth 3: 'pre(?:pre(?:pre(?:)post)post)post'
+  // Empty group in the middle separates tokens and absorbs a following quantifier if present
   return `${pre}${
-    repeatWithDepth(`(?:${pre}`, reps, (isSubpattern ? namesInRecursed : null), 'forward', useEmulationGroups)
+    repeatWithDepth(`(?:${pre}`, 'forward', ...rest)
   }(?:)${
-    repeatWithDepth(`${post})`, reps, (isSubpattern ? namesInRecursed : null), 'backward', useEmulationGroups)
+    repeatWithDepth(`${post})`, 'backward', ...rest)
   }${post}`;
 }
 
 /**
 @param {string} expression
+@param {'forward' | 'backward'} direction
 @param {number} reps
 @param {Set<string> | null} namesInRecursed
-@param {'forward' | 'backward'} direction
-@param {boolean} useEmulationGroups
+@param {Array<number> | null} hiddenCaptureNums
+@param {Array<number>} addedHiddenCaptureNums
+@param {number} numCapturesPassed
 @returns {string}
 */
-function repeatWithDepth(expression, reps, namesInRecursed, direction, useEmulationGroups) {
+function repeatWithDepth(expression, direction, reps, namesInRecursed, hiddenCaptureNums, addedHiddenCaptureNums, numCapturesPassed) {
   const startNum = 2;
-  const depthNum = i => direction === 'backward' ? reps - i + startNum - 1 : i + startNum;
+  const getDepthNum = i => direction === 'backward' ? (reps - i + startNum - 1) : (i + startNum);
   let result = '';
   for (let i = 0; i < reps; i++) {
-    const captureNum = depthNum(i);
+    const depthNum = getDepthNum(i);
     result += replaceUnescaped(
       expression,
-      // NOTE: Not currently handling *named* emulation groups that already exist in the pattern
-      r`${namedCapturingDelim}|\\k<(?<backref>[^>]+)>${
-        useEmulationGroups ? r`|(?<unnamed>\()(?!\?)(?:${emulationGroupMarkerRe.source})?` : ''
-      }`,
-      ({0: m, index, groups: {captureName, backref, unnamed}}) => {
+      r`${namedCapturingDelim}|\\k<(?<backref>[^>]+)>${hiddenCaptureNums ? r`|(?<unnamed>\()(?!\?)` : ''}`,
+      ({0: m, groups: {captureName, backref, unnamed}}) => {
         if (backref && namesInRecursed && !namesInRecursed.has(backref)) {
           // Don't alter backrefs to groups outside the recursed subpattern
           return m;
         }
-        // Only matches unnamed capture delim if `useEmulationGroups`
-        if (unnamed) {
-          // Add an emulation group marker, possibly replacing an existing marker (removes any
-          // transfer prefix)
-          return `(${emulationGroupMarker}`;
+        const suffix = `_$${depthNum}`;
+        if (unnamed || captureName) {
+          // The search only allowed matching unnamed capture start delims if using emulation groups
+          if (hiddenCaptureNums) {
+            const addedCaptureNum = numCapturesPassed + addedHiddenCaptureNums.length + 1;
+            addedHiddenCaptureNums.push(addedCaptureNum);
+            incrementIfAtLeast(hiddenCaptureNums, addedCaptureNum);
+          }
+          return unnamed ? m : `(?<${captureName}${suffix}>`;
         }
-        const suffix = `_$${captureNum}`;
-        return captureName ?
-          `(?<${captureName}${suffix}>${useEmulationGroups ? emulationGroupMarker : ''}` :
-          r`\k<${backref}${suffix}>`;
+        return r`\k<${backref}${suffix}>`;
       },
       Context.DEFAULT
     );
@@ -214,8 +240,19 @@ function repeatWithDepth(expression, reps, namesInRecursed, direction, useEmulat
   return result;
 }
 
-function emulationGroupMarkerLength(expression, index) {
-  emulationGroupMarkerRe.lastIndex = index;
-  const match = emulationGroupMarkerRe.exec(expression);
-  return match ? match[0].length : 0;
+/**
+Updates the array in place by incrementing each value greater than or equal to the threshold.
+@param {Array<number>} arr
+@param {number} threshold
+*/
+function incrementIfAtLeast(arr, threshold) {
+  for (let i = 0; i < arr.length; i++) {
+    if (arr[i] >= threshold) {
+      arr[i]++;
+    }
+  }
 }
+
+export {
+  recursion,
+};
