@@ -11,15 +11,15 @@ const overlappingRecursionMsg = 'Cannot use multiple overlapping recursions';
 @param {string} expression
 @param {{
   flags?: string;
-  hiddenCaptureNums?: Array<number> | null;
+  hiddenCaptureNums?: Array<number>;
 }} [data]
 @returns {{
-  hiddenCaptureNums: Array<number> | null;
+  hiddenCaptureNums: Array<number>;
   pattern: string;
 }}
 */
 function recursion(expression, data) {
-  const hiddenCaptureNums = data?.hiddenCaptureNums ?? null;
+  const hiddenCaptureNums = data?.hiddenCaptureNums ?? [];
   // Keep the initial fail-check (which avoids unneeded processing) as fast as possible by testing
   // without the accuracy improvement of using `hasUnescaped` with default `Context`
   if (!(new RegExp(recursiveToken, 'su').test(expression))) {
@@ -69,7 +69,15 @@ function recursion(expression, data) {
         if (hasUnescaped(post, recursiveToken, Context.DEFAULT)) {
           throw new Error(overlappingRecursionMsg);
         }
-        expression = makeRecursive(pre, post, +rDepth, false, hiddenCaptureNums, addedHiddenCaptureNums, numCapturesPassed);
+        expression = makeRecursive(
+          pre,
+          post,
+          +rDepth,
+          false,
+          hiddenCaptureNums,
+          addedHiddenCaptureNums,
+          numCapturesPassed
+        );
         // No need to parse further
         break;
       // `\g<name&R=N>`, `\g<number&R=N>`
@@ -139,9 +147,7 @@ function recursion(expression, data) {
     }
   }
 
-  if (hiddenCaptureNums) {
-    hiddenCaptureNums.push(...addedHiddenCaptureNums);
-  }
+  hiddenCaptureNums.push(...addedHiddenCaptureNums);
 
   return {
     hiddenCaptureNums,
@@ -168,7 +174,7 @@ function assertMaxInBounds(max) {
 @param {string} post
 @param {number} maxDepth
 @param {boolean} isSubpattern
-@param {Array<number> | null} hiddenCaptureNums
+@param {Array<number>} hiddenCaptureNums
 @param {Array<number>} addedHiddenCaptureNums
 @param {number} numCapturesPassed
 @returns {string}
@@ -203,7 +209,7 @@ function makeRecursive(pre, post, maxDepth, isSubpattern, hiddenCaptureNums, add
 @param {'forward' | 'backward'} direction
 @param {number} reps
 @param {Set<string> | null} namesInRecursed
-@param {Array<number> | null} hiddenCaptureNums
+@param {Array<number>} hiddenCaptureNums
 @param {Array<number>} addedHiddenCaptureNums
 @param {number} numCapturesPassed
 @returns {string}
@@ -216,20 +222,17 @@ function repeatWithDepth(expression, direction, reps, namesInRecursed, hiddenCap
     const depthNum = getDepthNum(i);
     result += replaceUnescaped(
       expression,
-      r`${namedCapturingDelim}|\\k<(?<backref>[^>]+)>${hiddenCaptureNums ? r`|(?<unnamed>\()(?!\?)` : ''}`,
-      ({0: m, groups: {captureName, backref, unnamed}}) => {
+      r`${namedCapturingDelim}|(?<unnamed>\()(?!\?)|\\k<(?<backref>[^>]+)>`,
+      ({0: m, groups: {captureName, unnamed, backref}}) => {
         if (backref && namesInRecursed && !namesInRecursed.has(backref)) {
           // Don't alter backrefs to groups outside the recursed subpattern
           return m;
         }
         const suffix = `_$${depthNum}`;
         if (unnamed || captureName) {
-          // The search only allowed matching unnamed capture start delims if using emulation groups
-          if (hiddenCaptureNums) {
-            const addedCaptureNum = numCapturesPassed + addedHiddenCaptureNums.length + 1;
-            addedHiddenCaptureNums.push(addedCaptureNum);
-            incrementIfAtLeast(hiddenCaptureNums, addedCaptureNum);
-          }
+          const addedCaptureNum = numCapturesPassed + addedHiddenCaptureNums.length + 1;
+          addedHiddenCaptureNums.push(addedCaptureNum);
+          incrementIfAtLeast(hiddenCaptureNums, addedCaptureNum);
           return unnamed ? m : `(?<${captureName}${suffix}>`;
         }
         return r`\k<${backref}${suffix}>`;
