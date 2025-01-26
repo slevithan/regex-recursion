@@ -11,21 +11,29 @@ const overlappingRecursionMsg = 'Cannot use multiple overlapping recursions';
 @param {string} expression
 @param {{
   flags?: string;
+  captureTransfers?: Map<number | string, number>;
   hiddenCaptureNums?: Array<number>;
 }} [data]
 @returns {{
-  hiddenCaptureNums: Array<number>;
   pattern: string;
+  captureTransfers: Map<number | string, number>;
+  hiddenCaptureNums: Array<number>;
 }}
 */
 function recursion(expression, data) {
-  const hiddenCaptureNums = data?.hiddenCaptureNums ?? [];
+  const d = {
+    captureTransfers: new Map(),
+    hiddenCaptureNums: [],
+    ...data,
+  };
+  const {captureTransfers, hiddenCaptureNums} = d;
   // Keep the initial fail-check (which avoids unneeded processing) as fast as possible by testing
-  // without the accuracy improvement of using `hasUnescaped` with default `Context`
+  // without the accuracy improvement of using `hasUnescaped` with `Context.DEFAULT`
   if (!(new RegExp(recursiveToken, 'su').test(expression))) {
     return {
-      hiddenCaptureNums,
       pattern: expression,
+      captureTransfers,
+      hiddenCaptureNums,
     };
   }
   if (hasUnescaped(expression, r`\(\?\(DEFINE\)`, Context.DEFAULT)) {
@@ -74,6 +82,7 @@ function recursion(expression, data) {
           post,
           +rDepth,
           false,
+          captureTransfers,
           hiddenCaptureNums,
           addedHiddenCaptureNums,
           numCapturesPassed
@@ -111,6 +120,7 @@ function recursion(expression, data) {
           groupContentsPost,
           +gRDepth,
           true,
+          captureTransfers,
           hiddenCaptureNums,
           addedHiddenCaptureNums,
           numCapturesPassed
@@ -131,7 +141,7 @@ function recursion(expression, data) {
           num: numCapturesPassed,
           name: captureName,
         });
-      } else if (m.startsWith('(')) {
+      } else if (m[0] === '(') {
         const isUnnamedCapture = m === '(';
         if (isUnnamedCapture) {
           numCapturesPassed++;
@@ -150,8 +160,9 @@ function recursion(expression, data) {
   hiddenCaptureNums.push(...addedHiddenCaptureNums);
 
   return {
-    hiddenCaptureNums,
     pattern: expression,
+    captureTransfers,
+    hiddenCaptureNums,
   };
 }
 
@@ -174,12 +185,22 @@ function assertMaxInBounds(max) {
 @param {string} post
 @param {number} maxDepth
 @param {boolean} isSubpattern
+@param {Map<number | string, number>} captureTransfers
 @param {Array<number>} hiddenCaptureNums
 @param {Array<number>} addedHiddenCaptureNums
 @param {number} numCapturesPassed
 @returns {string}
 */
-function makeRecursive(pre, post, maxDepth, isSubpattern, hiddenCaptureNums, addedHiddenCaptureNums, numCapturesPassed) {
+function makeRecursive(
+  pre,
+  post,
+  maxDepth,
+  isSubpattern,
+  captureTransfers,
+  hiddenCaptureNums,
+  addedHiddenCaptureNums,
+  numCapturesPassed
+) {
   const namesInRecursed = new Set();
   // Can skip this work if not needed
   if (isSubpattern) {
@@ -190,6 +211,7 @@ function makeRecursive(pre, post, maxDepth, isSubpattern, hiddenCaptureNums, add
   const rest = [
     maxDepth - 1, // reps
     isSubpattern ? namesInRecursed : null, // namesInRecursed
+    captureTransfers,
     hiddenCaptureNums,
     addedHiddenCaptureNums,
     numCapturesPassed,
@@ -197,11 +219,9 @@ function makeRecursive(pre, post, maxDepth, isSubpattern, hiddenCaptureNums, add
   // Depth 2: 'pre(?:pre(?:)post)post'
   // Depth 3: 'pre(?:pre(?:pre(?:)post)post)post'
   // Empty group in the middle separates tokens and absorbs a following quantifier if present
-  return `${pre}${
-    repeatWithDepth(`(?:${pre}`, 'forward', ...rest)
-  }(?:)${
-    repeatWithDepth(`${post})`, 'backward', ...rest)
-  }${post}`;
+  const left = repeatWithDepth(`(?:${pre}`, 'forward', ...rest, 0);
+  const right = repeatWithDepth(`${post})`, 'backward', ...rest, left.numCapturesProcessed);
+  return `${pre}${left.pattern}(?:)${right.pattern}${post}`;
 }
 
 /**
@@ -209,18 +229,34 @@ function makeRecursive(pre, post, maxDepth, isSubpattern, hiddenCaptureNums, add
 @param {'forward' | 'backward'} direction
 @param {number} reps
 @param {Set<string> | null} namesInRecursed
+@param {Map<number | string, number>} captureTransfers
 @param {Array<number>} hiddenCaptureNums
 @param {Array<number>} addedHiddenCaptureNums
 @param {number} numCapturesPassed
-@returns {string}
+@param {number} numCapturesPassedInExpansion
+@returns {{
+  pattern: string;
+  numCapturesProcessed: number;
+}}
 */
-function repeatWithDepth(expression, direction, reps, namesInRecursed, hiddenCaptureNums, addedHiddenCaptureNums, numCapturesPassed) {
+function repeatWithDepth(
+  expression,
+  direction,
+  reps,
+  namesInRecursed,
+  captureTransfers,
+  hiddenCaptureNums,
+  addedHiddenCaptureNums,
+  numCapturesPassed,
+  numCapturesPassedInExpansion
+) {
   const startNum = 2;
   const getDepthNum = i => direction === 'backward' ? (reps - i + startNum - 1) : (i + startNum);
-  let result = '';
+  let pattern = '';
+  let numCapturesProcessed = 0;
   for (let i = 0; i < reps; i++) {
     const depthNum = getDepthNum(i);
-    result += replaceUnescaped(
+    pattern += replaceUnescaped(
       expression,
       r`${namedCapturingDelim}|(?<unnamed>\()(?!\?)|\\k<(?<backref>[^>]+)>`,
       ({0: m, groups: {captureName, unnamed, backref}}) => {
@@ -233,6 +269,15 @@ function repeatWithDepth(expression, direction, reps, namesInRecursed, hiddenCap
           const addedCaptureNum = numCapturesPassed + addedHiddenCaptureNums.length + 1;
           addedHiddenCaptureNums.push(addedCaptureNum);
           incrementIfAtLeast(hiddenCaptureNums, addedCaptureNum);
+          // Only during the first rep
+          if (!i) {
+            numCapturesProcessed++;
+            setMapValueIfValueIs(
+              captureTransfers,
+              numCapturesPassed + numCapturesPassedInExpansion + numCapturesProcessed,
+              addedCaptureNum + reps - 1
+            );
+          }
           return unnamed ? m : `(?<${captureName}${suffix}>`;
         }
         return r`\k<${backref}${suffix}>`;
@@ -240,7 +285,10 @@ function repeatWithDepth(expression, direction, reps, namesInRecursed, hiddenCap
       Context.DEFAULT
     );
   }
-  return result;
+  return {
+    pattern,
+    numCapturesProcessed,
+  }
 }
 
 /**
@@ -254,6 +302,19 @@ function incrementIfAtLeast(arr, threshold) {
       arr[i]++;
     }
   }
+}
+
+/**
+@param {Map<number | string, number>} map
+@param {number} oldValue
+@param {number} newValue
+*/
+function setMapValueIfValueIs(map, oldValue, newValue) {
+  map.forEach((value, key) => {
+    if (value === oldValue) {
+      map.set(key, newValue);
+    }
+  });
 }
 
 export {
