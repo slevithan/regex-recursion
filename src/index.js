@@ -8,7 +8,7 @@ const token = new RegExp(r`${namedCapturingDelim}|${recursiveToken}|\(\?|\\?.`, 
 const overlappingRecursionMsg = 'Cannot use multiple overlapping recursions';
 
 /**
-@param {string} expression
+@param {string} pattern
 @param {{
   flags?: string;
   captureTransfers?: Map<number | string, number>;
@@ -20,7 +20,7 @@ const overlappingRecursionMsg = 'Cannot use multiple overlapping recursions';
   hiddenCaptureNums: Array<number>;
 }}
 */
-function recursion(expression, data) {
+function recursion(pattern, data) {
   const d = {
     captureTransfers: new Map(),
     hiddenCaptureNums: [],
@@ -29,19 +29,19 @@ function recursion(expression, data) {
   const {captureTransfers, hiddenCaptureNums} = d;
   // Keep the initial fail-check (which avoids unneeded processing) as fast as possible by testing
   // without the accuracy improvement of using `hasUnescaped` with `Context.DEFAULT`
-  if (!(new RegExp(recursiveToken, 'su').test(expression))) {
+  if (!(new RegExp(recursiveToken, 'su').test(pattern))) {
     return {
-      pattern: expression,
+      pattern,
       captureTransfers,
       hiddenCaptureNums,
     };
   }
-  if (hasUnescaped(expression, r`\(\?\(DEFINE\)`, Context.DEFAULT)) {
+  if (hasUnescaped(pattern, r`\(\?\(DEFINE\)`, Context.DEFAULT)) {
     throw new Error('DEFINE groups cannot be used with recursion');
   }
 
   const addedHiddenCaptureNums = [];
-  const hasNumberedBackref = hasUnescaped(expression, r`\\[1-9]`, Context.DEFAULT);
+  const hasNumberedBackref = hasUnescaped(pattern, r`\\[1-9]`, Context.DEFAULT);
   const groupContentsStartPos = new Map();
   const openGroups = [];
   let hasRecursed = false;
@@ -49,7 +49,7 @@ function recursion(expression, data) {
   let numCapturesPassed = 0;
   let match;
   token.lastIndex = 0;
-  while ((match = token.exec(expression))) {
+  while ((match = token.exec(pattern))) {
     const {0: m, groups: {captureName, rDepth, gRNameOrNum, gRDepth}} = match;
     if (m === '[') {
       numCharClassesOpen++;
@@ -72,12 +72,12 @@ function recursion(expression, data) {
           // *before* the transformation of built-in syntax extensions
           throw new Error('Numbered backrefs cannot be used with global recursion');
         }
-        const pre = expression.slice(0, match.index);
-        const post = expression.slice(token.lastIndex);
+        const pre = pattern.slice(0, match.index);
+        const post = pattern.slice(token.lastIndex);
         if (hasUnescaped(post, recursiveToken, Context.DEFAULT)) {
           throw new Error(overlappingRecursionMsg);
         }
-        expression = makeRecursive(
+        pattern = makeRecursive(
           pre,
           post,
           +rDepth,
@@ -106,14 +106,14 @@ function recursion(expression, data) {
           throw new Error(r`Recursive \g cannot be used outside the referenced group "\g<${gRNameOrNum}&R=${gRDepth}>"`);
         }
         const startPos = groupContentsStartPos.get(gRNameOrNum);
-        const groupContents = getGroupContents(expression, startPos);
+        const groupContents = getGroupContents(pattern, startPos);
         if (
           hasNumberedBackref &&
           hasUnescaped(groupContents, r`${namedCapturingDelim}|\((?!\?)`, Context.DEFAULT)
         ) {
           throw new Error('Numbered backrefs cannot be used with recursion of capturing groups');
         }
-        const groupContentsPre = expression.slice(startPos, match.index);
+        const groupContentsPre = pattern.slice(startPos, match.index);
         const groupContentsPost = groupContents.slice(groupContentsPre.length + m.length);
         const expansion = makeRecursive(
           groupContentsPre,
@@ -125,10 +125,10 @@ function recursion(expression, data) {
           addedHiddenCaptureNums,
           numCapturesPassed
         );
-        const pre = expression.slice(0, startPos);
-        const post = expression.slice(startPos + groupContents.length);
+        const pre = pattern.slice(0, startPos);
+        const post = pattern.slice(startPos + groupContents.length);
         // Modify the string we're looping over
-        expression = `${pre}${expansion}${post}`;
+        pattern = `${pre}${expansion}${post}`;
         // Step forward for the next loop iteration
         token.lastIndex += expansion.length - m.length - groupContentsPre.length - groupContentsPost.length;
         openGroups.forEach(g => g.hasRecursedWithin = true);
@@ -160,7 +160,7 @@ function recursion(expression, data) {
   hiddenCaptureNums.push(...addedHiddenCaptureNums);
 
   return {
-    pattern: expression,
+    pattern,
     captureTransfers,
     hiddenCaptureNums,
   };
@@ -225,7 +225,7 @@ function makeRecursive(
 }
 
 /**
-@param {string} expression
+@param {string} pattern
 @param {'forward' | 'backward'} direction
 @param {number} reps
 @param {Set<string> | null} namesInRecursed
@@ -240,7 +240,7 @@ function makeRecursive(
 }}
 */
 function repeatWithDepth(
-  expression,
+  pattern,
   direction,
   reps,
   namesInRecursed,
@@ -252,12 +252,12 @@ function repeatWithDepth(
 ) {
   const startNum = 2;
   const getDepthNum = i => direction === 'backward' ? (reps - i + startNum - 1) : (i + startNum);
-  let pattern = '';
+  let result = '';
   let numCapturesProcessed = 0;
   for (let i = 0; i < reps; i++) {
     const depthNum = getDepthNum(i);
-    pattern += replaceUnescaped(
-      expression,
+    result += replaceUnescaped(
+      pattern,
       r`${namedCapturingDelim}|(?<unnamed>\()(?!\?)|\\k<(?<backref>[^>]+)>`,
       ({0: m, groups: {captureName, unnamed, backref}}) => {
         if (backref && namesInRecursed && !namesInRecursed.has(backref)) {
@@ -286,7 +286,7 @@ function repeatWithDepth(
     );
   }
   return {
-    pattern,
+    pattern: result,
     numCapturesProcessed,
   }
 }
