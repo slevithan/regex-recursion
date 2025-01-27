@@ -13,6 +13,7 @@ const overlappingRecursionMsg = 'Cannot use multiple overlapping recursions';
   flags?: string;
   captureTransfers?: Map<number | string, number>;
   hiddenCaptureNums?: Array<number>;
+  mode?: 'plugin' | 'external';
 }} [data]
 @returns {{
   pattern: string;
@@ -24,6 +25,7 @@ function recursion(pattern, data) {
   const d = {
     captureTransfers: new Map(),
     hiddenCaptureNums: [],
+    mode: 'plugin',
     ...data,
   };
   const {captureTransfers, hiddenCaptureNums} = d;
@@ -36,7 +38,7 @@ function recursion(pattern, data) {
       hiddenCaptureNums,
     };
   }
-  if (hasUnescaped(pattern, r`\(\?\(DEFINE\)`, Context.DEFAULT)) {
+  if (d.mode === 'plugin' && hasUnescaped(pattern, r`\(\?\(DEFINE\)`, Context.DEFAULT)) {
     throw new Error('DEFINE groups cannot be used with recursion');
   }
 
@@ -70,7 +72,11 @@ function recursion(pattern, data) {
           // Note that Regex+'s extended syntax (atomic groups and sometimes subroutines) can also
           // add numbered backrefs, but those work fine because external plugins like this one run
           // *before* the transformation of built-in syntax extensions
-          throw new Error('Numbered backrefs cannot be used with global recursion');
+          throw new Error(
+            // When used in `external` mode by transpilers other than Regex+, backrefs might have
+            // gone through conversion from named to numbered, so avoid a misleading error
+            `${d.mode === 'external' ? 'Backrefs' : 'Numbered backrefs'} cannot be used with global recursion`
+          );
         }
         const pre = pattern.slice(0, match.index);
         const post = pattern.slice(token.lastIndex);
@@ -103,7 +109,9 @@ function recursion(pattern, data) {
           }
         }
         if (!isWithinReffedGroup) {
-          throw new Error(r`Recursive \g cannot be used outside the referenced group "\g<${gRNameOrNum}&R=${gRDepth}>"`);
+          throw new Error(r`Recursive \g cannot be used outside the referenced group "${
+            d.mode === 'external' ? gRNameOrNum : r`\g<${gRNameOrNum}&R=${gRDepth}>`
+          }"`);
         }
         const startPos = groupContentsStartPos.get(gRNameOrNum);
         const groupContents = getGroupContents(pattern, startPos);
@@ -111,7 +119,11 @@ function recursion(pattern, data) {
           hasNumberedBackref &&
           hasUnescaped(groupContents, r`${namedCapturingDelim}|\((?!\?)`, Context.DEFAULT)
         ) {
-          throw new Error('Numbered backrefs cannot be used with recursion of capturing groups');
+          throw new Error(
+            // When used in `external` mode by transpilers other than Regex+, backrefs might have
+            // gone through conversion from named to numbered, so avoid a misleading error
+            `${d.mode === 'external' ? 'Backrefs' : 'Numbered backrefs'} cannot be used with recursion of capturing groups`
+          );
         }
         const groupContentsPre = pattern.slice(startPos, match.index);
         const groupContentsPost = groupContents.slice(groupContentsPre.length + m.length);

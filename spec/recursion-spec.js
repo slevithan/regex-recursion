@@ -1,6 +1,8 @@
 import {recursion} from '../src/index.js';
 import {regex} from 'regex';
 
+const r = String.raw;
+
 describe('recursion', () => {
   it('should allow recursion depths 2-100', () => {
     const values = ['2', '100'];
@@ -146,7 +148,7 @@ describe('recursion', () => {
     });
 
     it('should handle recursion that contains emulation groups', () => {
-      expect(recursion(String.raw`^((a)\g<1&R=2>?b)$`, {
+      expect(recursion(r`^((a)\g<1&R=2>?b)$`, {
         hiddenCaptureNums: [2],
       })).toEqual({
         pattern: '^((a)(?:(a)(?:)?b)?b)$',
@@ -161,7 +163,7 @@ describe('recursion', () => {
 
     // Capture transfer is used by <github.com/slevithan/oniguruma-to-es>
     it('should handle recursion of emulation groups with capture transfer', () => {
-      expect(recursion(String.raw`^()(()(a)()\g<2&R=2>?b)$`, {
+      expect(recursion(r`^()(()(a)()\g<2&R=2>?b)$`, {
         captureTransfers: new Map([[1, 4]]),
         hiddenCaptureNums: [4],
       })).toEqual({
@@ -169,7 +171,7 @@ describe('recursion', () => {
         captureTransfers: new Map([[1, 7]]),
         hiddenCaptureNums: [4, 6, 7, 8],
       });
-      expect(recursion(String.raw`^()(a\g<2&R=2>?()(b)())$`, {
+      expect(recursion(r`^()(a\g<2&R=2>?()(b)())$`, {
         captureTransfers: new Map([[1, 4]]),
         hiddenCaptureNums: [4],
       })).toEqual({
@@ -177,7 +179,7 @@ describe('recursion', () => {
         captureTransfers: new Map([[1, 7]]),
         hiddenCaptureNums: [7, 3, 4, 5],
       });
-      expect(recursion(String.raw`^((a)\g<1&R=2>?(b))$`, {
+      expect(recursion(r`^((a)\g<1&R=2>?(b))$`, {
         captureTransfers: new Map([[1, 3]]),
       })).toEqual({
         pattern: '^((a)(?:(a)(?:)?(b))?(b))$',
