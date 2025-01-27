@@ -219,9 +219,11 @@ function makeRecursive(
   // Depth 2: 'pre(?:pre(?:)post)post'
   // Depth 3: 'pre(?:pre(?:pre(?:)post)post)post'
   // Empty group in the middle separates tokens and absorbs a following quantifier if present
-  const left = repeatWithDepth(`(?:${pre}`, 'forward', ...rest, 0);
-  const right = repeatWithDepth(`${post})`, 'backward', ...rest, left.numCapturesProcessed);
-  return `${pre}${left.pattern}(?:)${right.pattern}${post}`;
+  return `${pre}${
+    repeatWithDepth(`(?:${pre}`, 'forward', ...rest)
+  }(?:)${
+    repeatWithDepth(`${post})`, 'backward', ...rest)
+  }${post}`;
 }
 
 /**
@@ -233,11 +235,7 @@ function makeRecursive(
 @param {Array<number>} hiddenCaptureNums
 @param {Array<number>} addedHiddenCaptureNums
 @param {number} numCapturesPassed
-@param {number} numCapturesPassedInExpansion
-@returns {{
-  pattern: string;
-  numCapturesProcessed: number;
-}}
+@returns {string}
 */
 function repeatWithDepth(
   pattern,
@@ -247,18 +245,31 @@ function repeatWithDepth(
   captureTransfers,
   hiddenCaptureNums,
   addedHiddenCaptureNums,
-  numCapturesPassed,
-  numCapturesPassedInExpansion
+  numCapturesPassed
 ) {
+  const captureDelim = r`${namedCapturingDelim}|(?<unnamed>\()(?!\?)`;
+  if (captureTransfers.size) {
+    let numCapturesIn = 0;
+    forEachUnescaped(pattern, captureDelim, () => numCapturesIn++, Context.DEFAULT);
+    for (let i = 1; i <= numCapturesIn; i++) {
+      // Captures already included in `numCapturesPassed` on the forward pass
+      const numCapturesPassedPreRecursed = numCapturesPassed - (direction === 'forward' ? numCapturesIn : 0);
+      setMapValueIfValueIs(
+        captureTransfers,
+        numCapturesPassedPreRecursed + i,
+        numCapturesPassedPreRecursed + addedHiddenCaptureNums.length + ((reps + 1) * numCapturesIn) - (numCapturesIn - i)
+      );
+    }
+  }
+
   const startNum = 2;
-  const getDepthNum = i => direction === 'backward' ? (reps - i + startNum - 1) : (i + startNum);
+  const getDepthNum = i => direction === 'forward' ? (i + startNum) : (reps - i + startNum - 1);
   let result = '';
-  let numCapturesProcessed = 0;
   for (let i = 0; i < reps; i++) {
     const depthNum = getDepthNum(i);
     result += replaceUnescaped(
       pattern,
-      r`${namedCapturingDelim}|(?<unnamed>\()(?!\?)|\\k<(?<backref>[^>]+)>`,
+      r`${captureDelim}|\\k<(?<backref>[^>]+)>`,
       ({0: m, groups: {captureName, unnamed, backref}}) => {
         if (backref && namesInRecursed && !namesInRecursed.has(backref)) {
           // Don't alter backrefs to groups outside the recursed subpattern
@@ -269,15 +280,6 @@ function repeatWithDepth(
           const addedCaptureNum = numCapturesPassed + addedHiddenCaptureNums.length + 1;
           addedHiddenCaptureNums.push(addedCaptureNum);
           incrementIfAtLeast(hiddenCaptureNums, addedCaptureNum);
-          // Only during the first rep
-          if (!i) {
-            numCapturesProcessed++;
-            setMapValueIfValueIs(
-              captureTransfers,
-              numCapturesPassed + numCapturesPassedInExpansion + numCapturesProcessed,
-              addedCaptureNum + reps - 1
-            );
-          }
           return unnamed ? m : `(?<${captureName}${suffix}>`;
         }
         return r`\k<${backref}${suffix}>`;
@@ -285,10 +287,8 @@ function repeatWithDepth(
       Context.DEFAULT
     );
   }
-  return {
-    pattern: result,
-    numCapturesProcessed,
-  }
+
+  return result;
 }
 
 /**
