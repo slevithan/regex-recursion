@@ -3,8 +3,9 @@ import {Context, forEachUnescaped, getGroupContents, hasUnescaped, replaceUnesca
 const r = String.raw;
 const gRToken = r`\\g<(?<gRNameOrNum>[^>&]+)&R=(?<gRDepth>[^>]+)>`;
 const recursiveToken = r`\(\?R=(?<rDepth>[^\)]+)\)|${gRToken}`;
-const namedCapturingDelim = r`\(\?<(?![=!])(?<captureName>[^>]+)>`;
-const token = new RegExp(r`${namedCapturingDelim}|${recursiveToken}|\(\?|\\?.`, 'gsu');
+const namedCaptureDelim = r`\(\?<(?![=!])(?<captureName>[^>]+)>`;
+const captureDelim = r`${namedCaptureDelim}|(?<unnamed>\()(?!\?)`;
+const token = new RegExp(r`${namedCaptureDelim}|${recursiveToken}|\(\?|\\?.`, 'gsu');
 const overlappingRecursionMsg = 'Cannot use multiple overlapping recursions';
 
 /**
@@ -22,13 +23,13 @@ const overlappingRecursionMsg = 'Cannot use multiple overlapping recursions';
 }}
 */
 function recursion(pattern, data) {
-  const d = {
-    captureTransfers: new Map(),
+  const {hiddenCaptureNums, mode} = {
     hiddenCaptureNums: [],
     mode: 'plugin',
     ...data,
   };
-  const {captureTransfers, hiddenCaptureNums} = d;
+  // Capture transfer is used by <github.com/slevithan/oniguruma-to-es>
+  let captureTransfers = data?.captureTransfers ?? new Map();
   // Keep the initial fail-check (which avoids unneeded processing) as fast as possible by testing
   // without the accuracy improvement of using `hasUnescaped` with `Context.DEFAULT`
   if (!(new RegExp(recursiveToken, 'su').test(pattern))) {
@@ -38,7 +39,7 @@ function recursion(pattern, data) {
       hiddenCaptureNums,
     };
   }
-  if (d.mode === 'plugin' && hasUnescaped(pattern, r`\(\?\(DEFINE\)`, Context.DEFAULT)) {
+  if (mode === 'plugin' && hasUnescaped(pattern, r`\(\?\(DEFINE\)`, Context.DEFAULT)) {
     throw new Error('DEFINE groups cannot be used with recursion');
   }
 
@@ -75,7 +76,7 @@ function recursion(pattern, data) {
           throw new Error(
             // When used in `external` mode by transpilers other than Regex+, backrefs might have
             // gone through conversion from named to numbered, so avoid a misleading error
-            `${d.mode === 'external' ? 'Backrefs' : 'Numbered backrefs'} cannot be used with global recursion`
+            `${mode === 'external' ? 'Backrefs' : 'Numbered backrefs'} cannot be used with global recursion`
           );
         }
         const pre = pattern.slice(0, match.index);
@@ -88,10 +89,16 @@ function recursion(pattern, data) {
           post,
           +rDepth,
           false,
-          captureTransfers,
           hiddenCaptureNums,
           addedHiddenCaptureNums,
           numCapturesPassed
+        );
+        captureTransfers = mapCaptureTransfers(
+          captureTransfers,
+          numCapturesPassed,
+          pre,
+          addedHiddenCaptureNums.length,
+          0
         );
         // No need to parse further
         break;
@@ -110,32 +117,39 @@ function recursion(pattern, data) {
         }
         if (!isWithinReffedGroup) {
           throw new Error(r`Recursive \g cannot be used outside the referenced group "${
-            d.mode === 'external' ? gRNameOrNum : r`\g<${gRNameOrNum}&R=${gRDepth}>`
+            mode === 'external' ? gRNameOrNum : r`\g<${gRNameOrNum}&R=${gRDepth}>`
           }"`);
         }
         const startPos = groupContentsStartPos.get(gRNameOrNum);
         const groupContents = getGroupContents(pattern, startPos);
         if (
           hasNumberedBackref &&
-          hasUnescaped(groupContents, r`${namedCapturingDelim}|\((?!\?)`, Context.DEFAULT)
+          hasUnescaped(groupContents, r`${namedCaptureDelim}|\((?!\?)`, Context.DEFAULT)
         ) {
           throw new Error(
             // When used in `external` mode by transpilers other than Regex+, backrefs might have
             // gone through conversion from named to numbered, so avoid a misleading error
-            `${d.mode === 'external' ? 'Backrefs' : 'Numbered backrefs'} cannot be used with recursion of capturing groups`
+            `${mode === 'external' ? 'Backrefs' : 'Numbered backrefs'} cannot be used with recursion of capturing groups`
           );
         }
         const groupContentsPre = pattern.slice(startPos, match.index);
         const groupContentsPost = groupContents.slice(groupContentsPre.length + m.length);
+        const numAddedHiddenCapturesPreExpansion = addedHiddenCaptureNums.length;
         const expansion = makeRecursive(
           groupContentsPre,
           groupContentsPost,
           +gRDepth,
           true,
-          captureTransfers,
           hiddenCaptureNums,
           addedHiddenCaptureNums,
           numCapturesPassed
+        );
+        captureTransfers = mapCaptureTransfers(
+          captureTransfers,
+          numCapturesPassed,
+          groupContentsPre,
+          addedHiddenCaptureNums.length - numAddedHiddenCapturesPreExpansion,
+          numAddedHiddenCapturesPreExpansion
         );
         const pre = pattern.slice(0, startPos);
         const post = pattern.slice(startPos + groupContents.length);
@@ -197,7 +211,6 @@ function assertMaxInBounds(max) {
 @param {string} post
 @param {number} maxDepth
 @param {boolean} isSubpattern
-@param {Map<number | string, number>} captureTransfers
 @param {Array<number>} hiddenCaptureNums
 @param {Array<number>} addedHiddenCaptureNums
 @param {number} numCapturesPassed
@@ -208,7 +221,6 @@ function makeRecursive(
   post,
   maxDepth,
   isSubpattern,
-  captureTransfers,
   hiddenCaptureNums,
   addedHiddenCaptureNums,
   numCapturesPassed
@@ -216,14 +228,13 @@ function makeRecursive(
   const namesInRecursed = new Set();
   // Can skip this work if not needed
   if (isSubpattern) {
-    forEachUnescaped(pre + post, namedCapturingDelim, ({groups: {captureName}}) => {
+    forEachUnescaped(pre + post, namedCaptureDelim, ({groups: {captureName}}) => {
       namesInRecursed.add(captureName);
     }, Context.DEFAULT);
   }
   const rest = [
     maxDepth - 1, // reps
     isSubpattern ? namesInRecursed : null, // namesInRecursed
-    captureTransfers,
     hiddenCaptureNums,
     addedHiddenCaptureNums,
     numCapturesPassed,
@@ -243,7 +254,6 @@ function makeRecursive(
 @param {'forward' | 'backward'} direction
 @param {number} reps
 @param {Set<string> | null} namesInRecursed
-@param {Map<number | string, number>} captureTransfers
 @param {Array<number>} hiddenCaptureNums
 @param {Array<number>} addedHiddenCaptureNums
 @param {number} numCapturesPassed
@@ -254,26 +264,10 @@ function repeatWithDepth(
   direction,
   reps,
   namesInRecursed,
-  captureTransfers,
   hiddenCaptureNums,
   addedHiddenCaptureNums,
   numCapturesPassed
 ) {
-  const captureDelim = r`${namedCapturingDelim}|(?<unnamed>\()(?!\?)`;
-  if (captureTransfers.size) {
-    let numCapturesIn = 0;
-    forEachUnescaped(pattern, captureDelim, () => numCapturesIn++, Context.DEFAULT);
-    for (let i = 1; i <= numCapturesIn; i++) {
-      // Captures already included in `numCapturesPassed` on the forward pass
-      const numCapturesPassedPreRecursed = numCapturesPassed - (direction === 'forward' ? numCapturesIn : 0);
-      setMapValueIfValueIs(
-        captureTransfers,
-        numCapturesPassedPreRecursed + i,
-        numCapturesPassedPreRecursed + addedHiddenCaptureNums.length + ((reps + 1) * numCapturesIn) - (numCapturesIn - i)
-      );
-    }
-  }
-
   const startNum = 2;
   const getDepthNum = i => direction === 'forward' ? (i + startNum) : (reps - i + startNum - 1);
   let result = '';
@@ -299,7 +293,6 @@ function repeatWithDepth(
       Context.DEFAULT
     );
   }
-
   return result;
 }
 
@@ -317,16 +310,34 @@ function incrementIfAtLeast(arr, threshold) {
 }
 
 /**
-@param {Map<number | string, number>} map
-@param {number} oldValue
-@param {number} newValue
+@param {Map<number | string, number>} captureTransfers
+@param {number} numCapturesPassed
+@param {string} leftContents
+@param {number} numCapturesAddedInExpansion
+@param {number} numAddedHiddenCapturesPreExpansion
+@returns {Map<number | string, number>}
 */
-function setMapValueIfValueIs(map, oldValue, newValue) {
-  map.forEach((value, key) => {
-    if (value === oldValue) {
-      map.set(key, newValue);
-    }
-  });
+function mapCaptureTransfers(captureTransfers, numCapturesPassed, leftContents, numCapturesAddedInExpansion, numAddedHiddenCapturesPreExpansion) {
+  if (captureTransfers.size && numCapturesAddedInExpansion) {
+    let numCapturesInLeftContents = 0;
+    forEachUnescaped(leftContents, captureDelim, () => numCapturesInLeftContents++, Context.DEFAULT);
+    const recursionDelimCaptureNum = numCapturesPassed - numCapturesInLeftContents + numAddedHiddenCapturesPreExpansion;
+    const newCaptureTransfers = new Map();
+    captureTransfers.forEach((/** @type {number} */ from, /** @type {number | string} */ to) => {
+      if (from > recursionDelimCaptureNum) {
+        from += (
+          // if capture is on left side of expanded group
+          from <= (recursionDelimCaptureNum + numCapturesInLeftContents) ?
+            numCapturesInLeftContents :
+            numCapturesAddedInExpansion
+        );
+      }
+      // `to` can be a group number or name
+      newCaptureTransfers.set((to > numCapturesPassed ? to + numCapturesAddedInExpansion : to), from);
+    });
+    return newCaptureTransfers;
+  }
+  return captureTransfers;
 }
 
 export {
