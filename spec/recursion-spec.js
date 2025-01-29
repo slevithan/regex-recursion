@@ -147,7 +147,7 @@ describe('recursion', () => {
       expect(regex({plugins: [recursion], subclass: true})`(?<d>a)(?R=2)?`.exec('aa')).toHaveSize(2);
     });
 
-    it('should handle recursion that contains emulation groups', () => {
+    it('should handle recursion that contains hidden captures', () => {
       expect(recursion(r`^((a)\g<1&R=2>?b)$`, {
         hiddenCaptures: [2],
       })).toEqual({
@@ -155,8 +155,8 @@ describe('recursion', () => {
         captureTransfers: new Map(),
         hiddenCaptures: [2, 3],
       });
-      // Atomic groups are handled by Regex+ after external plugins like recursion, so this is
-      // actually testing Regex+'s ability to preserve and add to emulation groups between plugins
+      // Atomic groups are handled by Regex+ *after* external plugins like recursion, so this is
+      // actually testing Regex+'s ability to preserve and add to hidden captures across plugins
       expect(regex({plugins: [recursion], subclass: true, disable: {n: true}})`^(((?>a))\g<1&R=2>?b)$`.exec('aabb')).toHaveSize(3);
       expect(regex({plugins: [recursion], subclass: true, disable: {n: true}})`^(((?>a)(?>x))\g<1&R=2>?b)$`.exec('axaxbb')).toHaveSize(3);
     });
