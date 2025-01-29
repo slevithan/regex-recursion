@@ -19,11 +19,11 @@ importers:
         specifier: ^5.5.0
         version: 5.5.0
       regex:
-        specifier: file:../regex
-        version: file:../regex
+        specifier: ^6.0.0
+        version: 6.0.0
       typescript:
-        specifier: ~5.7.2
-        version: 5.7.2
+        specifier: ^5.7.3
+        version: 5.7.3
 
 packages:
 
@@ -282,8 +282,8 @@ packages:
   regex-utilities@2.3.0:
     resolution: {integrity: sha512-8VhliFJAWRaUiVvREIiW2NXXTmHs4vMNnSzuJVhscgmGav3g9VDxLrQndI3dZZVVdp0ZO/5v0xmX516/7M9cng==}
 
-  regex@file:../regex:
-    resolution: {directory: ../regex, type: directory}
+  regex@6.0.0:
+    resolution: {integrity: sha512-2xXUhn4n/JISczyycYeTklPgctFFZoyORM8EBrUM7HrxebHvSwXaiDFawOeOhQOb6AGrgU2a47Iv9jml/YocCQ==}
 
   shebang-command@2.0.0:
     resolution: {integrity: sha512-kHxr2zZpYtdmrN1qDjrrX/Z1rR1kG8Dx+gkpK1G4eXmvXswmcE1hTWBWYUzlraYw1/yZp6YuDY77YtvbN0dmDA==}
@@ -313,8 +313,8 @@ packages:
     resolution: {integrity: sha512-iq6eVVI64nQQTRYq2KtEg2d2uU7LElhTJwsH4YzIHZshxlgZms/wIc4VoDQTlG/IvVIrBKG06CrZnp0qv7hkcQ==}
     engines: {node: '>=12'}
 
-  typescript@5.7.2:
-    resolution: {integrity: sha512-i5t66RHxDvVN40HfDd1PsEThGNnlMCMT3jMUuoh9/0TaqWevNontacunWyN02LA9/fIbEWlcHZcgTKb9QoaLfg==}
+  typescript@5.7.3:
+    resolution: {integrity: sha512-84MVSjMEHP+FQRPy3pX9sTVV/INIex71s9TL2Gm5FG/WG1SqXeKyZ0k7/blY/4FdOzI12CBy1vGc4og/eus0fw==}
     engines: {node: '>=14.17'}
     hasBin: true
 
@@ -532,7 +532,7 @@ snapshots:
 
   regex-utilities@2.3.0: {}
 
-  regex@file:../regex:
+  regex@6.0.0:
     dependencies:
       regex-utilities: 2.3.0
 
@@ -564,7 +564,7 @@ snapshots:
     dependencies:
       ansi-regex: 6.1.0
 
-  typescript@5.7.2: {}
+  typescript@5.7.3: {}
 
   which@2.0.2:
     dependencies:
