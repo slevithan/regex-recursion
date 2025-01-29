@@ -13,18 +13,18 @@ const overlappingRecursionMsg = 'Cannot use multiple overlapping recursions';
 @param {{
   flags?: string;
   captureTransfers?: Map<number | string, number>;
-  hiddenCaptureNums?: Array<number>;
+  hiddenCaptures?: Array<number>;
   mode?: 'plugin' | 'external';
 }} [data]
 @returns {{
   pattern: string;
   captureTransfers: Map<number | string, number>;
-  hiddenCaptureNums: Array<number>;
+  hiddenCaptures: Array<number>;
 }}
 */
 function recursion(pattern, data) {
-  const {hiddenCaptureNums, mode} = {
-    hiddenCaptureNums: [],
+  const {hiddenCaptures, mode} = {
+    hiddenCaptures: [],
     mode: 'plugin',
     ...data,
   };
@@ -36,14 +36,14 @@ function recursion(pattern, data) {
     return {
       pattern,
       captureTransfers,
-      hiddenCaptureNums,
+      hiddenCaptures,
     };
   }
   if (mode === 'plugin' && hasUnescaped(pattern, r`\(\?\(DEFINE\)`, Context.DEFAULT)) {
     throw new Error('DEFINE groups cannot be used with recursion');
   }
 
-  const addedHiddenCaptureNums = [];
+  const addedHiddenCaptures = [];
   const hasNumberedBackref = hasUnescaped(pattern, r`\\[1-9]`, Context.DEFAULT);
   const groupContentsStartPos = new Map();
   const openGroups = [];
@@ -89,15 +89,15 @@ function recursion(pattern, data) {
           post,
           +rDepth,
           false,
-          hiddenCaptureNums,
-          addedHiddenCaptureNums,
+          hiddenCaptures,
+          addedHiddenCaptures,
           numCapturesPassed
         );
         captureTransfers = mapCaptureTransfers(
           captureTransfers,
           numCapturesPassed,
           pre,
-          addedHiddenCaptureNums.length,
+          addedHiddenCaptures.length,
           0
         );
         // No need to parse further
@@ -134,21 +134,21 @@ function recursion(pattern, data) {
         }
         const groupContentsPre = pattern.slice(startPos, match.index);
         const groupContentsPost = groupContents.slice(groupContentsPre.length + m.length);
-        const numAddedHiddenCapturesPreExpansion = addedHiddenCaptureNums.length;
+        const numAddedHiddenCapturesPreExpansion = addedHiddenCaptures.length;
         const expansion = makeRecursive(
           groupContentsPre,
           groupContentsPost,
           +gRDepth,
           true,
-          hiddenCaptureNums,
-          addedHiddenCaptureNums,
+          hiddenCaptures,
+          addedHiddenCaptures,
           numCapturesPassed
         );
         captureTransfers = mapCaptureTransfers(
           captureTransfers,
           numCapturesPassed,
           groupContentsPre,
-          addedHiddenCaptureNums.length - numAddedHiddenCapturesPreExpansion,
+          addedHiddenCaptures.length - numAddedHiddenCapturesPreExpansion,
           numAddedHiddenCapturesPreExpansion
         );
         const pre = pattern.slice(0, startPos);
@@ -183,12 +183,12 @@ function recursion(pattern, data) {
     }
   }
 
-  hiddenCaptureNums.push(...addedHiddenCaptureNums);
+  hiddenCaptures.push(...addedHiddenCaptures);
 
   return {
     pattern,
     captureTransfers,
-    hiddenCaptureNums,
+    hiddenCaptures,
   };
 }
 
@@ -211,8 +211,8 @@ function assertMaxInBounds(max) {
 @param {string} post
 @param {number} maxDepth
 @param {boolean} isSubpattern
-@param {Array<number>} hiddenCaptureNums
-@param {Array<number>} addedHiddenCaptureNums
+@param {Array<number>} hiddenCaptures
+@param {Array<number>} addedHiddenCaptures
 @param {number} numCapturesPassed
 @returns {string}
 */
@@ -221,8 +221,8 @@ function makeRecursive(
   post,
   maxDepth,
   isSubpattern,
-  hiddenCaptureNums,
-  addedHiddenCaptureNums,
+  hiddenCaptures,
+  addedHiddenCaptures,
   numCapturesPassed
 ) {
   const namesInRecursed = new Set();
@@ -235,8 +235,8 @@ function makeRecursive(
   const rest = [
     maxDepth - 1, // reps
     isSubpattern ? namesInRecursed : null, // namesInRecursed
-    hiddenCaptureNums,
-    addedHiddenCaptureNums,
+    hiddenCaptures,
+    addedHiddenCaptures,
     numCapturesPassed,
   ];
   // Depth 2: 'pre(?:pre(?:)post)post'
@@ -254,8 +254,8 @@ function makeRecursive(
 @param {'forward' | 'backward'} direction
 @param {number} reps
 @param {Set<string> | null} namesInRecursed
-@param {Array<number>} hiddenCaptureNums
-@param {Array<number>} addedHiddenCaptureNums
+@param {Array<number>} hiddenCaptures
+@param {Array<number>} addedHiddenCaptures
 @param {number} numCapturesPassed
 @returns {string}
 */
@@ -264,8 +264,8 @@ function repeatWithDepth(
   direction,
   reps,
   namesInRecursed,
-  hiddenCaptureNums,
-  addedHiddenCaptureNums,
+  hiddenCaptures,
+  addedHiddenCaptures,
   numCapturesPassed
 ) {
   const startNum = 2;
@@ -283,9 +283,9 @@ function repeatWithDepth(
         }
         const suffix = `_$${depthNum}`;
         if (unnamed || captureName) {
-          const addedCaptureNum = numCapturesPassed + addedHiddenCaptureNums.length + 1;
-          addedHiddenCaptureNums.push(addedCaptureNum);
-          incrementIfAtLeast(hiddenCaptureNums, addedCaptureNum);
+          const addedCaptureNum = numCapturesPassed + addedHiddenCaptures.length + 1;
+          addedHiddenCaptures.push(addedCaptureNum);
+          incrementIfAtLeast(hiddenCaptures, addedCaptureNum);
           return unnamed ? m : `(?<${captureName}${suffix}>`;
         }
         return r`\k<${backref}${suffix}>`;

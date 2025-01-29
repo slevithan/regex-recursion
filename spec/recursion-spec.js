@@ -149,11 +149,11 @@ describe('recursion', () => {
 
     it('should handle recursion that contains emulation groups', () => {
       expect(recursion(r`^((a)\g<1&R=2>?b)$`, {
-        hiddenCaptureNums: [2],
+        hiddenCaptures: [2],
       })).toEqual({
         pattern: '^((a)(?:(a)(?:)?b)?b)$',
         captureTransfers: new Map(),
-        hiddenCaptureNums: [2, 3],
+        hiddenCaptures: [2, 3],
       });
       // Atomic groups are handled by Regex+ after external plugins like recursion, so this is
       // actually testing Regex+'s ability to preserve and add to emulation groups between plugins
@@ -169,26 +169,26 @@ describe('recursion', () => {
         })).toEqual({
           pattern: '(a)(?:(a)(?:)?(b))?(b)',
           captureTransfers: new Map([[1, 4]]),
-          hiddenCaptureNums: [2, 3],
+          hiddenCaptures: [2, 3],
         });
       });
 
       it('should transfer to capture preceding recursion', () => {
         expect(recursion(r`()(()(a)()\g<2&R=2>?b)`, {
           captureTransfers: new Map([[1, 4]]),
-          hiddenCaptureNums: [4],
+          hiddenCaptures: [4],
         })).toEqual({
           pattern: '()(()(a)()(?:()(a)()(?:)?b)?b)',
           captureTransfers: new Map([[1, 7]]),
-          hiddenCaptureNums: [4, 6, 7, 8],
+          hiddenCaptures: [4, 6, 7, 8],
         });
         expect(recursion(r`()(a\g<2&R=2>?()(b)())`, {
           captureTransfers: new Map([[1, 4]]),
-          hiddenCaptureNums: [4],
+          hiddenCaptures: [4],
         })).toEqual({
           pattern: '()(a(?:a(?:)?()(b)())?()(b)())',
           captureTransfers: new Map([[1, 7]]),
-          hiddenCaptureNums: [7, 3, 4, 5],
+          hiddenCaptures: [7, 3, 4, 5],
         });
       });
 
@@ -198,7 +198,7 @@ describe('recursion', () => {
         })).toEqual({
           pattern: '((a)(?:(a)(?:)?(b))?(b))',
           captureTransfers: new Map([[1, 5]]),
-          hiddenCaptureNums: [3, 4],
+          hiddenCaptures: [3, 4],
         });
       });
 
@@ -208,21 +208,21 @@ describe('recursion', () => {
         })).toEqual({
           pattern: '(?<r>(a)(?:(a)(?:)?b)?b) ((a)(?:(a)(?:)?b)?b)',
           captureTransfers: new Map([[1, 4], ['r', 4], [2, 6]]),
-          hiddenCaptureNums: [3, 6],
+          hiddenCaptures: [3, 6],
         });
         expect(recursion(r`(?<r>a\g<r&R=2>?(b)) (a\g<3&R=2>?(b))`, {
           captureTransfers: new Map([[1, 3], ['r', 3], [2, 4]]),
         })).toEqual({
           pattern: '(?<r>a(?:a(?:)?(b))?(b)) (a(?:a(?:)?(b))?(b))',
           captureTransfers: new Map([[1, 4], ['r', 4], [3, 6]]),
-          hiddenCaptureNums: [2, 5],
+          hiddenCaptures: [2, 5],
         });
         expect(recursion(r`(?<r>(a)\g<r&R=2>?(b)) ((a)\g<4&R=2>?(b))`, {
           captureTransfers: new Map([[1, 4], ['r', 4], [2, 5], [3, 6]]),
         })).toEqual({
           pattern: '(?<r>(a)(?:(a)(?:)?(b))?(b)) ((a)(?:(a)(?:)?(b))?(b))',
           captureTransfers: new Map([[1, 6], ['r', 6], [2, 8], [5, 10]]),
-          hiddenCaptureNums: [3, 4, 8, 9],
+          hiddenCaptures: [3, 4, 8, 9],
         });
       });
 
@@ -232,7 +232,7 @@ describe('recursion', () => {
         })).toEqual({
           pattern: '((2)(?:(2)(?:)?)?) (3) (4)',
           captureTransfers: new Map([[4, 5]]),
-          hiddenCaptureNums: [3],
+          hiddenCaptures: [3],
         });
       });
     });
