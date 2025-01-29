@@ -1,9 +1,13 @@
 # regex-recursion
 
 [![npm version][npm-version-src]][npm-version-href]
+[![npm downloads][npm-downloads-src]][npm-downloads-href]
 [![bundle][bundle-src]][bundle-href]
 
 This is an official plugin for [Regex+](https://github.com/slevithan/regex) that adds support for recursive matching up to a specified max depth *N*, where *N* can be between 2 and 100. Generated regexes are native JavaScript `RegExp` instances.
+
+> [!NOTE]
+> Regex flavors vary on whether they offer infinite or fixed-depth recursion. For example, recursion in Oniguruma uses a depth limit of 20, and doesn't allow changing this.
 
 Recursive matching is added to a regex via one of the following (the recursion depth limit is provided in place of *`N`*):
 
@@ -48,8 +52,8 @@ const re = regex({plugins: [recursion]})`…`;
 #### Anywhere within a string
 
 ```js
-// Matches sequences of up to 50 'a' chars followed by the same number of 'b'
-const re = regex({plugins: [recursion]})`a(?R=50)?b`;
+// Matches sequences of up to 20 'a' chars followed by the same number of 'b'
+const re = regex({plugins: [recursion]})`a(?R=20)?b`;
 re.exec('test aaaaaabbb')[0];
 // → 'aaabbb'
 ```
@@ -60,7 +64,7 @@ Use `\g<name&R=N>` to recursively match just the specified group.
 
 ```js
 const re = regex({plugins: [recursion]})`
-  ^ (?<r> a \g<r&R=50>? b) $
+  ^ (?<r> a \g<r&R=20>? b) $
 `;
 re.test('aaabbb'); // → true
 re.test('aaabb'); // → false
@@ -69,9 +73,9 @@ re.test('aaabb'); // → false
 ### Match balanced parentheses
 
 ```js
-// Matches all balanced parentheses up to depth 50
+// Matches all balanced parentheses up to depth 20
 const parens = regex({flags: 'g', plugins: [recursion]})`
-  \( ([^\(\)] | (?R=50))* \)
+  \( ([^\(\)] | (?R=20))* \)
 `;
 
 'test ) (balanced ((parens))) () ((a)) ( (b)'.match(parens);
@@ -83,17 +87,24 @@ const parens = regex({flags: 'g', plugins: [recursion]})`
 ] */
 ```
 
-Following is an alternative that matches the same strings, but adds a nested quantifier. It then uses an atomic group to prevent this nested quantifier from creating the potential for [catastrophic backtracking](https://www.regular-expressions.info/catastrophic.html).
+Following is an alternative that matches the same strings, but adds a nested quantifier. It then uses an atomic group to prevent this nested quantifier from creating the potential for [catastrophic backtracking](https://www.regular-expressions.info/catastrophic.html). Since the example above doesn't need a nested quantifier, this is not an improvement but merely an alternative that shows how to deal with the general problem of nested quantifiers with multiple ways to divide matches of the same strings.
 
 ```js
 const parens = regex({flags: 'g', plugins: [recursion]})`
-  \( ((?> [^\(\)]+) | (?R=50))* \)
+  \( ((?> [^\(\)]+) | (?R=20))* \)
+`;
+
+// Or with a possessive quantifier
+const parens = regex({flags: 'g', plugins: [recursion]})`
+  \( ([^\(\)]++ | (?R=20))* \)
 `;
 ```
 
-This matches sequences of non-parentheses in one step with the nested `+` quantifier, and avoids backtracking into these sequences by wrapping it with an atomic group `(?>…)`. Given that what the nested quantifier `+` matches overlaps with what the outer group can match with its `*` quantifier, the atomic group is important here. It avoids exponential backtracking when matching long strings with unbalanced parentheses.
+The first example above matches sequences of non-parentheses in one step with the nested `+` quantifier, and avoids backtracking into these sequences by wrapping it with an atomic group `(?>…)`. Given that what the nested quantifier `+` matches overlaps with what the outer group can match with its `*` quantifier, the atomic group is important here. It avoids exponential backtracking when matching long strings with unbalanced parentheses.
 
-[Atomic groups](https://github.com/slevithan/regex#atomic-groups) are provided by the base Regex+ library.
+In cases where you're you're repeating a single token within an atomic group, possessive quantifiers provide syntax sugar.
+
+Atomic groups and possessive quantifiers are provided by the base Regex+ library.
 
 ### Match palindromes
 
@@ -134,5 +145,7 @@ const palindromeWords = regex({flags: 'gi', plugins: [recursion]})`
 
 [npm-version-src]: https://img.shields.io/npm/v/regex-recursion?color=78C372
 [npm-version-href]: https://npmjs.com/package/regex-recursion
+[npm-downloads-src]: https://img.shields.io/npm/dm/regex-recursion?color=78C372
+[npm-downloads-href]: https://npmjs.com/package/regex-recursion
 [bundle-src]: https://img.shields.io/bundlejs/size/regex-recursion?color=78C372&label=minzip
 [bundle-href]: https://bundlejs.com/?q=regex-recursion&treeshake=[*]

@@ -240,51 +240,60 @@ describe('recursion', () => {
 
   describe('readme examples', () => {
     it('should match an equal number of two different subpatterns', () => {
-      expect(regex({plugins: [recursion]})`a(?R=50)?b`.exec('test aaaaaabbb')[0]).toBe('aaabbb');
-      expect('aAbb').toMatch(regex({flags: 'i', plugins: [recursion]})`a(?R=2)?b`);
+      const re = regex({plugins: [recursion]})`a(?R=20)?b`;
+      expect(re.exec('test aaaaaabbb')[0]).toBe('aaabbb');
     });
 
     it('should match an equal number of two different subpatterns, as the entire string', () => {
-      const re = regex({plugins: [recursion]})`^
-        (?<balanced>
-          a
-          # Recursively match just the specified group
-          \g<balanced&R=50>?
-          b
-        )
-      $`;
+      const re = regex({plugins: [recursion]})`
+        ^ (?<r> a \g<r&R=20>? b) $
+      `;
       expect(re.test('aaabbb')).toBeTrue();
       expect(re.test('aaabb')).toBeFalse();
     });
 
     it('should match balanced parentheses', () => {
-      const parens = regex({flags: 'g', plugins: [recursion]})`\(
-        ( [^\(\)] | (?R=50) )*
-      \)`;
+      const parens = regex({flags: 'g', plugins: [recursion]})`
+        \( ([^\(\)] | (?R=20))* \)
+      `;
       expect('test ) (balanced ((parens))) () ((a)) ( (b)'.match(parens)).toEqual(['(balanced ((parens)))', '()', '((a))', '(b)']);
     });
 
     it('should match balanced parentheses using an atomic group', () => {
-      const parens = regex({flags: 'g', plugins: [recursion]})`\(
-        ( (?> [^\(\)]+ ) | (?R=50) )*
-      \)`;
+      const parens = regex({flags: 'g', plugins: [recursion]})`
+        \( ((?> [^\(\)]+) | (?R=20))* \)
+      `;
+      expect('test ) (balanced ((parens))) () ((a)) ( (b)'.match(parens)).toEqual(['(balanced ((parens)))', '()', '((a))', '(b)']);
+    });
+
+    it('should match balanced parentheses using a possessive quantifier', () => {
+      const parens = regex({flags: 'g', plugins: [recursion]})`
+        \( ([^\(\)]++ | (?R=20))* \)
+      `;
       expect('test ) (balanced ((parens))) () ((a)) ( (b)'.match(parens)).toEqual(['(balanced ((parens)))', '()', '((a))', '(b)']);
     });
 
     it('should match palindromes', () => {
-      const palindromes = regex({flags: 'gi', plugins: [recursion]})`(?<char>\w) ((?R=15)|\w?) \k<char>`;
+      const palindromes = regex({flags: 'gi', plugins: [recursion]})`
+        (?<char> \w)
+        # Recurse, or match a lone unbalanced char in the middle
+        ((?R=15) | \w?)
+        \k<char>
+      `;
       expect('Racecar, ABBA, and redivided'.match(palindromes)).toEqual(['Racecar', 'ABBA', 'edivide']);
     });
 
     it('should match palindromes as complete words', () => {
-      const palindromeWords = regex({flags: 'gi', plugins: [recursion]})`\b
+      const palindromeWords = regex({flags: 'gi', plugins: [recursion]})`
+        \b
         (?<palindrome>
           (?<char> \w )
           # Recurse, or match a lone unbalanced char in the center
           ( \g<palindrome&R=15> | \w? )
           \k<char>
         )
-      \b`;
+        \b
+      `;
       expect('Racecar, ABBA, and redivided'.match(palindromeWords)).toEqual(['Racecar', 'ABBA']);
     });
   });
