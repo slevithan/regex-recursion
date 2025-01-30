@@ -79,15 +79,16 @@ function recursion(pattern, data) {
             `${mode === 'external' ? 'Backrefs' : 'Numbered backrefs'} cannot be used with global recursion`
           );
         }
-        const pre = pattern.slice(0, match.index);
-        const post = pattern.slice(token.lastIndex);
-        if (hasUnescaped(post, recursiveToken, Context.DEFAULT)) {
+        const left = pattern.slice(0, match.index);
+        const right = pattern.slice(token.lastIndex);
+        if (hasUnescaped(right, recursiveToken, Context.DEFAULT)) {
           throw new Error(overlappingRecursionMsg);
         }
+        const reps = +rDepth - 1;
         pattern = makeRecursive(
-          pre,
-          post,
-          +rDepth,
+          left,
+          right,
+          reps,
           false,
           hiddenCaptures,
           addedHiddenCaptures,
@@ -96,7 +97,8 @@ function recursion(pattern, data) {
         captureTransfers = mapCaptureTransfers(
           captureTransfers,
           numCapturesPassed,
-          pre,
+          left,
+          reps,
           addedHiddenCaptures.length,
           0
         );
@@ -132,13 +134,14 @@ function recursion(pattern, data) {
             `${mode === 'external' ? 'Backrefs' : 'Numbered backrefs'} cannot be used with recursion of capturing groups`
           );
         }
-        const groupContentsPre = pattern.slice(startPos, match.index);
-        const groupContentsPost = groupContents.slice(groupContentsPre.length + m.length);
+        const groupContentsLeft = pattern.slice(startPos, match.index);
+        const groupContentsRight = groupContents.slice(groupContentsLeft.length + m.length);
         const numAddedHiddenCapturesPreExpansion = addedHiddenCaptures.length;
+        const reps = +gRDepth - 1;
         const expansion = makeRecursive(
-          groupContentsPre,
-          groupContentsPost,
-          +gRDepth,
+          groupContentsLeft,
+          groupContentsRight,
+          reps,
           true,
           hiddenCaptures,
           addedHiddenCaptures,
@@ -147,7 +150,8 @@ function recursion(pattern, data) {
         captureTransfers = mapCaptureTransfers(
           captureTransfers,
           numCapturesPassed,
-          groupContentsPre,
+          groupContentsLeft,
+          reps,
           addedHiddenCaptures.length - numAddedHiddenCapturesPreExpansion,
           numAddedHiddenCapturesPreExpansion
         );
@@ -156,7 +160,7 @@ function recursion(pattern, data) {
         // Modify the string we're looping over
         pattern = `${pre}${expansion}${post}`;
         // Step forward for the next loop iteration
-        token.lastIndex += expansion.length - m.length - groupContentsPre.length - groupContentsPost.length;
+        token.lastIndex += expansion.length - m.length - groupContentsLeft.length - groupContentsRight.length;
         openGroups.forEach(g => g.hasRecursedWithin = true);
         hasRecursed = true;
       } else if (captureName) {
@@ -207,9 +211,9 @@ function assertMaxInBounds(max) {
 }
 
 /**
-@param {string} pre
-@param {string} post
-@param {number} maxDepth
+@param {string} left
+@param {string} right
+@param {number} reps
 @param {boolean} isSubpattern
 @param {Array<number>} hiddenCaptures
 @param {Array<number>} addedHiddenCaptures
@@ -217,9 +221,9 @@ function assertMaxInBounds(max) {
 @returns {string}
 */
 function makeRecursive(
-  pre,
-  post,
-  maxDepth,
+  left,
+  right,
+  reps,
   isSubpattern,
   hiddenCaptures,
   addedHiddenCaptures,
@@ -228,25 +232,25 @@ function makeRecursive(
   const namesInRecursed = new Set();
   // Can skip this work if not needed
   if (isSubpattern) {
-    forEachUnescaped(pre + post, namedCaptureDelim, ({groups: {captureName}}) => {
+    forEachUnescaped(left + right, namedCaptureDelim, ({groups: {captureName}}) => {
       namesInRecursed.add(captureName);
     }, Context.DEFAULT);
   }
   const rest = [
-    maxDepth - 1, // reps
-    isSubpattern ? namesInRecursed : null, // namesInRecursed
+    reps,
+    isSubpattern ? namesInRecursed : null,
     hiddenCaptures,
     addedHiddenCaptures,
     numCapturesPassed,
   ];
-  // Depth 2: 'pre(?:pre(?:)post)post'
-  // Depth 3: 'pre(?:pre(?:pre(?:)post)post)post'
+  // Depth 2: 'left(?:left(?:)right)right'
+  // Depth 3: 'left(?:left(?:left(?:)right)right)right'
   // Empty group in the middle separates tokens and absorbs a following quantifier if present
-  return `${pre}${
-    repeatWithDepth(`(?:${pre}`, 'forward', ...rest)
+  return `${left}${
+    repeatWithDepth(`(?:${left}`, 'forward', ...rest)
   }(?:)${
-    repeatWithDepth(`${post})`, 'backward', ...rest)
-  }${post}`;
+    repeatWithDepth(`${right})`, 'backward', ...rest)
+  }${right}`;
 }
 
 /**
@@ -312,28 +316,32 @@ function incrementIfAtLeast(arr, threshold) {
 /**
 @param {Map<number | string, number>} captureTransfers
 @param {number} numCapturesPassed
-@param {string} leftContents
+@param {string} left
+@param {number} reps
 @param {number} numCapturesAddedInExpansion
 @param {number} numAddedHiddenCapturesPreExpansion
 @returns {Map<number | string, number>}
 */
-function mapCaptureTransfers(captureTransfers, numCapturesPassed, leftContents, numCapturesAddedInExpansion, numAddedHiddenCapturesPreExpansion) {
+function mapCaptureTransfers(captureTransfers, numCapturesPassed, left, reps, numCapturesAddedInExpansion, numAddedHiddenCapturesPreExpansion) {
   if (captureTransfers.size && numCapturesAddedInExpansion) {
-    let numCapturesInLeftContents = 0;
-    forEachUnescaped(leftContents, captureDelim, () => numCapturesInLeftContents++, Context.DEFAULT);
-    const recursionDelimCaptureNum = numCapturesPassed - numCapturesInLeftContents + numAddedHiddenCapturesPreExpansion;
+    let numCapturesInLeft = 0;
+    forEachUnescaped(left, captureDelim, () => numCapturesInLeft++, Context.DEFAULT);
+    const recursionDelimCaptureNum = numCapturesPassed - numCapturesInLeft + numAddedHiddenCapturesPreExpansion; // 0 for global
     const newCaptureTransfers = new Map();
     captureTransfers.forEach((/** @type {number} */ from, /** @type {number | string} */ to) => {
+      // `to` can be a group number or name
+      if (to > (numCapturesPassed + numAddedHiddenCapturesPreExpansion)) {
+        to += numCapturesAddedInExpansion;
+      }
       if (from > recursionDelimCaptureNum) {
         from += (
           // if capture is on left side of expanded group
-          from <= (recursionDelimCaptureNum + numCapturesInLeftContents) ?
-            numCapturesInLeftContents :
+          from <= (recursionDelimCaptureNum + numCapturesInLeft) ?
+            numCapturesInLeft * reps :
             numCapturesAddedInExpansion
         );
       }
-      // `to` can be a group number or name
-      newCaptureTransfers.set((to > numCapturesPassed ? to + numCapturesAddedInExpansion : to), from);
+      newCaptureTransfers.set(to, from);
     });
     return newCaptureTransfers;
   }

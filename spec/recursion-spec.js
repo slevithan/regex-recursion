@@ -173,7 +173,7 @@ describe('recursion', () => {
         });
       });
 
-      it('should transfer to capture preceding recursion', () => {
+      it('should transfer to capture that precedes the recursion', () => {
         expect(recursion(r`()(()(a)()\g<2&R=2>?b)`, {
           captureTransfers: new Map([[1, 4]]),
           hiddenCaptures: [4],
@@ -188,7 +188,7 @@ describe('recursion', () => {
         })).toEqual({
           pattern: '()(a(?:a(?:)?()(b)())?()(b)())',
           captureTransfers: new Map([[1, 7]]),
-          hiddenCaptures: [7, 3, 4, 5],
+          hiddenCaptures: [7, 3, 4, 5], // unsorted
         });
       });
 
@@ -203,6 +203,7 @@ describe('recursion', () => {
       });
 
       it('should transfer across multiple recursions', () => {
+        // Capture in left contents of recursions
         expect(recursion(r`(?<r>(a)\g<r&R=2>?b) ((a)\g<3&R=2>?b)`, {
           captureTransfers: new Map([[1, 3], ['r', 3], [2, 4]]),
         })).toEqual({
@@ -210,6 +211,7 @@ describe('recursion', () => {
           captureTransfers: new Map([[1, 4], ['r', 4], [2, 6]]),
           hiddenCaptures: [3, 6],
         });
+        // Capture in right contents of recursions
         expect(recursion(r`(?<r>a\g<r&R=2>?(b)) (a\g<3&R=2>?(b))`, {
           captureTransfers: new Map([[1, 3], ['r', 3], [2, 4]]),
         })).toEqual({
@@ -217,6 +219,7 @@ describe('recursion', () => {
           captureTransfers: new Map([[1, 4], ['r', 4], [3, 6]]),
           hiddenCaptures: [2, 5],
         });
+        // Capture in left and right contents of recursions
         expect(recursion(r`(?<r>(a)\g<r&R=2>?(b)) ((a)\g<4&R=2>?(b))`, {
           captureTransfers: new Map([[1, 4], ['r', 4], [2, 5], [3, 6]]),
         })).toEqual({
@@ -224,9 +227,27 @@ describe('recursion', () => {
           captureTransfers: new Map([[1, 6], ['r', 6], [2, 8], [5, 10]]),
           hiddenCaptures: [3, 4, 8, 9],
         });
+        // Triple recursion with capture transfer to middle (Oniguruma: `\g<a> (?<a>a\g<b>?b) (?<b>c\g<a>?d)`)
+        expect(recursion(r`(a(c\g<1&R=2>?d)?b) (?<a>a(c\g<3&R=2>?d)?b) (?<b>c(a\g<5&R=2>?b)?d)`, {
+          captureTransfers: new Map([[3, 6], ['a', 6]]),
+          hiddenCaptures: [1, 2, 4, 6],
+        })).toEqual({
+          pattern: '(a(c(?:a(c(?:)?d)?b)?d)?b) (?<a>a(c(?:a(c(?:)?d)?b)?d)?b) (?<b>c(a(?:c(a(?:)?b)?d)?b)?d)',
+          captureTransfers: new Map([[4, 9],['a', 9]]),
+          hiddenCaptures: [1, 2, 5, 8, 3, 6, 9], // unsorted
+        });
+        // Same as above but with depth 3
+        expect(recursion(r`(a(c\g<1&R=3>?d)?b) (?<a>a(c\g<3&R=3>?d)?b) (?<b>c(a\g<5&R=3>?b)?d)`, {
+          captureTransfers: new Map([[3, 6], ['a', 6]]),
+          hiddenCaptures: [1, 2, 4, 6],
+        })).toEqual({
+          pattern: '(a(c(?:a(c(?:a(c(?:)?d)?b)?d)?b)?d)?b) (?<a>a(c(?:a(c(?:a(c(?:)?d)?b)?d)?b)?d)?b) (?<b>c(a(?:c(a(?:c(a(?:)?b)?d)?b)?d)?b)?d)',
+          captureTransfers: new Map([[5, 12],['a', 12]]),
+          hiddenCaptures: [1, 2, 6, 10, 3, 4, 7, 8, 11, 12], // unsorted
+        });
       });
 
-      it('should transfer for captures after recursion', () => {
+      it('should transfer between captures following recursion', () => {
         expect(recursion(r`((2)\g<1&R=2>?) (3) (4)`, {
           captureTransfers: new Map([[3, 4]]),
         })).toEqual({
@@ -237,64 +258,64 @@ describe('recursion', () => {
       });
     });
   });
+});
 
-  describe('readme examples', () => {
-    it('should match an equal number of two different subpatterns', () => {
-      const re = regex({plugins: [recursion]})`a(?R=20)?b`;
-      expect(re.exec('test aaaaaabbb')[0]).toBe('aaabbb');
-    });
+describe('readme examples', () => {
+  it('should match an equal number of two different subpatterns', () => {
+    const re = regex({plugins: [recursion]})`a(?R=20)?b`;
+    expect(re.exec('test aaaaaabbb')[0]).toBe('aaabbb');
+  });
 
-    it('should match an equal number of two different subpatterns, as the entire string', () => {
-      const re = regex({plugins: [recursion]})`
-        ^ (?<r> a \g<r&R=20>? b) $
-      `;
-      expect(re.test('aaabbb')).toBeTrue();
-      expect(re.test('aaabb')).toBeFalse();
-    });
+  it('should match an equal number of two different subpatterns, as the entire string', () => {
+    const re = regex({plugins: [recursion]})`
+      ^ (?<r> a \g<r&R=20>? b) $
+    `;
+    expect(re.test('aaabbb')).toBeTrue();
+    expect(re.test('aaabb')).toBeFalse();
+  });
 
-    it('should match balanced parentheses', () => {
-      const parens = regex({flags: 'g', plugins: [recursion]})`
-        \( ([^\(\)] | (?R=20))* \)
-      `;
-      expect('test ) (balanced ((parens))) () ((a)) ( (b)'.match(parens)).toEqual(['(balanced ((parens)))', '()', '((a))', '(b)']);
-    });
+  it('should match balanced parentheses', () => {
+    const parens = regex({flags: 'g', plugins: [recursion]})`
+      \( ([^\(\)] | (?R=20))* \)
+    `;
+    expect('test ) (balanced ((parens))) () ((a)) ( (b)'.match(parens)).toEqual(['(balanced ((parens)))', '()', '((a))', '(b)']);
+  });
 
-    it('should match balanced parentheses using an atomic group', () => {
-      const parens = regex({flags: 'g', plugins: [recursion]})`
-        \( ((?> [^\(\)]+) | (?R=20))* \)
-      `;
-      expect('test ) (balanced ((parens))) () ((a)) ( (b)'.match(parens)).toEqual(['(balanced ((parens)))', '()', '((a))', '(b)']);
-    });
+  it('should match balanced parentheses using an atomic group', () => {
+    const parens = regex({flags: 'g', plugins: [recursion]})`
+      \( ((?> [^\(\)]+) | (?R=20))* \)
+    `;
+    expect('test ) (balanced ((parens))) () ((a)) ( (b)'.match(parens)).toEqual(['(balanced ((parens)))', '()', '((a))', '(b)']);
+  });
 
-    it('should match balanced parentheses using a possessive quantifier', () => {
-      const parens = regex({flags: 'g', plugins: [recursion]})`
-        \( ([^\(\)]++ | (?R=20))* \)
-      `;
-      expect('test ) (balanced ((parens))) () ((a)) ( (b)'.match(parens)).toEqual(['(balanced ((parens)))', '()', '((a))', '(b)']);
-    });
+  it('should match balanced parentheses using a possessive quantifier', () => {
+    const parens = regex({flags: 'g', plugins: [recursion]})`
+      \( ([^\(\)]++ | (?R=20))* \)
+    `;
+    expect('test ) (balanced ((parens))) () ((a)) ( (b)'.match(parens)).toEqual(['(balanced ((parens)))', '()', '((a))', '(b)']);
+  });
 
-    it('should match palindromes', () => {
-      const palindromes = regex({flags: 'gi', plugins: [recursion]})`
-        (?<char> \w)
-        # Recurse, or match a lone unbalanced char in the middle
-        ((?R=15) | \w?)
+  it('should match palindromes', () => {
+    const palindromes = regex({flags: 'gi', plugins: [recursion]})`
+      (?<char> \w)
+      # Recurse, or match a lone unbalanced char in the middle
+      ((?R=15) | \w?)
+      \k<char>
+    `;
+    expect('Racecar, ABBA, and redivided'.match(palindromes)).toEqual(['Racecar', 'ABBA', 'edivide']);
+  });
+
+  it('should match palindromes as complete words', () => {
+    const palindromeWords = regex({flags: 'gi', plugins: [recursion]})`
+      \b
+      (?<palindrome>
+        (?<char> \w )
+        # Recurse, or match a lone unbalanced char in the center
+        ( \g<palindrome&R=15> | \w? )
         \k<char>
-      `;
-      expect('Racecar, ABBA, and redivided'.match(palindromes)).toEqual(['Racecar', 'ABBA', 'edivide']);
-    });
-
-    it('should match palindromes as complete words', () => {
-      const palindromeWords = regex({flags: 'gi', plugins: [recursion]})`
-        \b
-        (?<palindrome>
-          (?<char> \w )
-          # Recurse, or match a lone unbalanced char in the center
-          ( \g<palindrome&R=15> | \w? )
-          \k<char>
-        )
-        \b
-      `;
-      expect('Racecar, ABBA, and redivided'.match(palindromeWords)).toEqual(['Racecar', 'ABBA']);
-    });
+      )
+      \b
+    `;
+    expect('Racecar, ABBA, and redivided'.match(palindromeWords)).toEqual(['Racecar', 'ABBA']);
   });
 });
