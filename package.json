@@ -1,6 +1,6 @@
 {
   "name": "regex-recursion",
-  "version": "6.0.0",
+  "version": "6.0.1",
   "description": "Recursive matching plugin for Regex+",
   "author": "Steven Levithan",
   "license": "MIT",
@@ -42,7 +42,7 @@
   "devDependencies": {
     "esbuild": "^0.24.2",
     "jasmine": "^5.5.0",
-    "regex": "^6.0.0",
+    "regex": "^6.0.1",
     "typescript": "^5.7.3"
   },
   "packageManager": "pnpm@9.15.4"

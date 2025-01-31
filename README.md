@@ -34,8 +34,8 @@ const re = regex({plugins: [recursion]})`…`;
   <summary>Using a global name (no import)</summary>
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/regex@6.0.0/dist/regex.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/regex-recursion@6.0.0/dist/regex-recursion.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/regex@6.0.1/dist/regex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/regex-recursion@6.0.1/dist/regex-recursion.min.js"></script>
 <script>
   const {regex} = Regex;
   const {recursion} = Regex.plugins;
