@@ -326,25 +326,36 @@ function mapCaptureTransfers(captureTransfers, numCapturesPassed, left, reps, nu
   if (captureTransfers.size && numCapturesAddedInExpansion) {
     let numCapturesInLeft = 0;
     forEachUnescaped(left, captureDelim, () => numCapturesInLeft++, Context.DEFAULT);
-    // 0 for global recursion
+    // Is 0 for global recursion
     const recursionDelimCaptureNum = numCapturesPassed - numCapturesInLeft + numAddedHiddenCapturesPreExpansion;
     const newCaptureTransfers = new Map();
     captureTransfers.forEach((from, to) => {
-      if (to > (numCapturesPassed + numAddedHiddenCapturesPreExpansion)) {
-        to += numCapturesAddedInExpansion;
-      }
-      from = from.map(f => {
-        if (f > recursionDelimCaptureNum) {
-          f += (
-            // if the capture is on the left side of the expanded subpattern
-            f <= (recursionDelimCaptureNum + numCapturesInLeft) ?
-              numCapturesInLeft * reps :
-              numCapturesAddedInExpansion
-          );
+      const newTo = to > (numCapturesPassed + numAddedHiddenCapturesPreExpansion) ?
+        to + numCapturesAddedInExpansion :
+        to;
+      const newFrom = [];
+      for (const f of from) {
+        // Before the recursed subpattern
+        if (f <= recursionDelimCaptureNum) {
+          newFrom.push(f);
+        // After the recursed subpattern
+        } else if (f > (recursionDelimCaptureNum + numCapturesAddedInExpansion)) {
+          newFrom.push(f + numCapturesAddedInExpansion);
+        // Within the recursed subpattern, on the left of the recursion token
+        } else if (f <= (recursionDelimCaptureNum + numCapturesInLeft)) {
+          for (let i = 0; i <= reps; i++) {
+            newFrom.push(f + (numCapturesInLeft * i));
+          }
+        // Within the recursed subpattern, on the right of the recursion token
+        } else {
+          const numCapturesInRight = (numCapturesAddedInExpansion - (numCapturesInLeft * reps)) / reps;
+          const numCapturesAddedInLeft = numCapturesInLeft * reps;
+          for (let i = 0; i <= reps; i++) {
+            newFrom.push(f + numCapturesAddedInLeft + (numCapturesInRight * i));
+          }
         }
-        return f;
-      });
-      newCaptureTransfers.set(to, from);
+      }
+      newCaptureTransfers.set(newTo, newFrom);
     });
     return newCaptureTransfers;
   }

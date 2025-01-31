@@ -168,7 +168,7 @@ describe('recursion', () => {
           captureTransfers: new Map([[1, [2]]]),
         })).toEqual({
           pattern: '(a)(?:(a)(?:)?(b))?(b)',
-          captureTransfers: new Map([[1, [4]]]),
+          captureTransfers: new Map([[1, [3, 4]]]),
           hiddenCaptures: [2, 3],
         });
       });
@@ -179,7 +179,7 @@ describe('recursion', () => {
           hiddenCaptures: [4],
         })).toEqual({
           pattern: '()(()(a)()(?:()(a)()(?:)?b)?b)',
-          captureTransfers: new Map([[1, [7]]]),
+          captureTransfers: new Map([[1, [4, 7]]]),
           hiddenCaptures: [4, 6, 7, 8],
         });
         expect(recursion(r`()(a\g<2&R=2>?()(b)())`, {
@@ -187,7 +187,7 @@ describe('recursion', () => {
           hiddenCaptures: [4],
         })).toEqual({
           pattern: '()(a(?:a(?:)?()(b)())?()(b)())',
-          captureTransfers: new Map([[1, [7]]]),
+          captureTransfers: new Map([[1, [4, 7]]]),
           hiddenCaptures: [7, 3, 4, 5], // unsorted
         });
       });
@@ -197,7 +197,7 @@ describe('recursion', () => {
           captureTransfers: new Map([[1, [3]]]),
         })).toEqual({
           pattern: '((a)(?:(a)(?:)?(b))?(b))',
-          captureTransfers: new Map([[1, [5]]]),
+          captureTransfers: new Map([[1, [4, 5]]]),
           hiddenCaptures: [3, 4],
         });
       });
@@ -208,7 +208,7 @@ describe('recursion', () => {
           captureTransfers: new Map([[1, [3]], [2, [4]]]),
         })).toEqual({
           pattern: '(?<r>(a)(?:(a)(?:)?b)?b) ((a)(?:(a)(?:)?b)?b)',
-          captureTransfers: new Map([[1, [4]], [2, [6]]]),
+          captureTransfers: new Map([[1, [4]], [2, [5, 6]]]),
           hiddenCaptures: [3, 6],
         });
         // Capture in right contents of recursions
@@ -216,7 +216,7 @@ describe('recursion', () => {
           captureTransfers: new Map([[1, [3]], [2, [4]]]),
         })).toEqual({
           pattern: '(?<r>a(?:a(?:)?(b))?(b)) (a(?:a(?:)?(b))?(b))',
-          captureTransfers: new Map([[1, [4]], [3, [6]]]),
+          captureTransfers: new Map([[1, [4]], [3, [5, 6]]]),
           hiddenCaptures: [2, 5],
         });
         // Capture in left and right contents of recursions
@@ -224,7 +224,7 @@ describe('recursion', () => {
           captureTransfers: new Map([[1, [4]], [2, [5]], [3, [6]]]),
         })).toEqual({
           pattern: '(?<r>(a)(?:(a)(?:)?(b))?(b)) ((a)(?:(a)(?:)?(b))?(b))',
-          captureTransfers: new Map([[1, [6]], [2, [8]], [5, [10]]]),
+          captureTransfers: new Map([[1, [6]], [2, [7, 8]], [5, [9, 10]]]),
           hiddenCaptures: [3, 4, 8, 9],
         });
         // Triple recursion with capture transfer to middle (Oniguruma: `\g<a> (?<a>a\g<b>?b) (?<b>c\g<a>?d)`)
@@ -233,7 +233,7 @@ describe('recursion', () => {
           hiddenCaptures: [1, 2, 4, 6],
         })).toEqual({
           pattern: '(a(c(?:a(c(?:)?d)?b)?d)?b) (?<a>a(c(?:a(c(?:)?d)?b)?d)?b) (?<b>c(a(?:c(a(?:)?b)?d)?b)?d)',
-          captureTransfers: new Map([[4, [9]]]),
+          captureTransfers: new Map([[4, [8, 9]]]),
           hiddenCaptures: [1, 2, 5, 8, 3, 6, 9], // unsorted
         });
         // Same as above but with depth 3
@@ -242,7 +242,7 @@ describe('recursion', () => {
           hiddenCaptures: [1, 2, 4, 6],
         })).toEqual({
           pattern: '(a(c(?:a(c(?:a(c(?:)?d)?b)?d)?b)?d)?b) (?<a>a(c(?:a(c(?:a(c(?:)?d)?b)?d)?b)?d)?b) (?<b>c(a(?:c(a(?:c(a(?:)?b)?d)?b)?d)?b)?d)',
-          captureTransfers: new Map([[5, [12]]]),
+          captureTransfers: new Map([[5, [10, 11, 12]]]),
           hiddenCaptures: [1, 2, 6, 10, 3, 4, 7, 8, 11, 12], // unsorted
         });
       });
