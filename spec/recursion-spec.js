@@ -165,39 +165,39 @@ describe('recursion', () => {
     describe('with capture transfers', () => {
       it('should transfer with global recursion', () => {
         expect(recursion('(a)(?R=2)?(b)', {
-          captureTransfers: new Map([[1, 2]]),
+          captureTransfers: new Map([[1, [2]]]),
         })).toEqual({
           pattern: '(a)(?:(a)(?:)?(b))?(b)',
-          captureTransfers: new Map([[1, 4]]),
+          captureTransfers: new Map([[1, [4]]]),
           hiddenCaptures: [2, 3],
         });
       });
 
       it('should transfer to capture that precedes the recursion', () => {
         expect(recursion(r`()(()(a)()\g<2&R=2>?b)`, {
-          captureTransfers: new Map([[1, 4]]),
+          captureTransfers: new Map([[1, [4]]]),
           hiddenCaptures: [4],
         })).toEqual({
           pattern: '()(()(a)()(?:()(a)()(?:)?b)?b)',
-          captureTransfers: new Map([[1, 7]]),
+          captureTransfers: new Map([[1, [7]]]),
           hiddenCaptures: [4, 6, 7, 8],
         });
         expect(recursion(r`()(a\g<2&R=2>?()(b)())`, {
-          captureTransfers: new Map([[1, 4]]),
+          captureTransfers: new Map([[1, [4]]]),
           hiddenCaptures: [4],
         })).toEqual({
           pattern: '()(a(?:a(?:)?()(b)())?()(b)())',
-          captureTransfers: new Map([[1, 7]]),
+          captureTransfers: new Map([[1, [7]]]),
           hiddenCaptures: [7, 3, 4, 5], // unsorted
         });
       });
 
       it('should transfer to capture of the recursed group', () => {
         expect(recursion(r`((a)\g<1&R=2>?(b))`, {
-          captureTransfers: new Map([[1, 3]]),
+          captureTransfers: new Map([[1, [3]]]),
         })).toEqual({
           pattern: '((a)(?:(a)(?:)?(b))?(b))',
-          captureTransfers: new Map([[1, 5]]),
+          captureTransfers: new Map([[1, [5]]]),
           hiddenCaptures: [3, 4],
         });
       });
@@ -205,54 +205,54 @@ describe('recursion', () => {
       it('should transfer across multiple recursions', () => {
         // Capture in left contents of recursions
         expect(recursion(r`(?<r>(a)\g<r&R=2>?b) ((a)\g<3&R=2>?b)`, {
-          captureTransfers: new Map([[1, 3], ['r', 3], [2, 4]]),
+          captureTransfers: new Map([[1, [3]], [2, [4]]]),
         })).toEqual({
           pattern: '(?<r>(a)(?:(a)(?:)?b)?b) ((a)(?:(a)(?:)?b)?b)',
-          captureTransfers: new Map([[1, 4], ['r', 4], [2, 6]]),
+          captureTransfers: new Map([[1, [4]], [2, [6]]]),
           hiddenCaptures: [3, 6],
         });
         // Capture in right contents of recursions
         expect(recursion(r`(?<r>a\g<r&R=2>?(b)) (a\g<3&R=2>?(b))`, {
-          captureTransfers: new Map([[1, 3], ['r', 3], [2, 4]]),
+          captureTransfers: new Map([[1, [3]], [2, [4]]]),
         })).toEqual({
           pattern: '(?<r>a(?:a(?:)?(b))?(b)) (a(?:a(?:)?(b))?(b))',
-          captureTransfers: new Map([[1, 4], ['r', 4], [3, 6]]),
+          captureTransfers: new Map([[1, [4]], [3, [6]]]),
           hiddenCaptures: [2, 5],
         });
         // Capture in left and right contents of recursions
         expect(recursion(r`(?<r>(a)\g<r&R=2>?(b)) ((a)\g<4&R=2>?(b))`, {
-          captureTransfers: new Map([[1, 4], ['r', 4], [2, 5], [3, 6]]),
+          captureTransfers: new Map([[1, [4]], [2, [5]], [3, [6]]]),
         })).toEqual({
           pattern: '(?<r>(a)(?:(a)(?:)?(b))?(b)) ((a)(?:(a)(?:)?(b))?(b))',
-          captureTransfers: new Map([[1, 6], ['r', 6], [2, 8], [5, 10]]),
+          captureTransfers: new Map([[1, [6]], [2, [8]], [5, [10]]]),
           hiddenCaptures: [3, 4, 8, 9],
         });
         // Triple recursion with capture transfer to middle (Oniguruma: `\g<a> (?<a>a\g<b>?b) (?<b>c\g<a>?d)`)
         expect(recursion(r`(a(c\g<1&R=2>?d)?b) (?<a>a(c\g<3&R=2>?d)?b) (?<b>c(a\g<5&R=2>?b)?d)`, {
-          captureTransfers: new Map([[3, 6], ['a', 6]]),
+          captureTransfers: new Map([[3, [6]]]),
           hiddenCaptures: [1, 2, 4, 6],
         })).toEqual({
           pattern: '(a(c(?:a(c(?:)?d)?b)?d)?b) (?<a>a(c(?:a(c(?:)?d)?b)?d)?b) (?<b>c(a(?:c(a(?:)?b)?d)?b)?d)',
-          captureTransfers: new Map([[4, 9],['a', 9]]),
+          captureTransfers: new Map([[4, [9]]]),
           hiddenCaptures: [1, 2, 5, 8, 3, 6, 9], // unsorted
         });
         // Same as above but with depth 3
         expect(recursion(r`(a(c\g<1&R=3>?d)?b) (?<a>a(c\g<3&R=3>?d)?b) (?<b>c(a\g<5&R=3>?b)?d)`, {
-          captureTransfers: new Map([[3, 6], ['a', 6]]),
+          captureTransfers: new Map([[3, [6]]]),
           hiddenCaptures: [1, 2, 4, 6],
         })).toEqual({
           pattern: '(a(c(?:a(c(?:a(c(?:)?d)?b)?d)?b)?d)?b) (?<a>a(c(?:a(c(?:a(c(?:)?d)?b)?d)?b)?d)?b) (?<b>c(a(?:c(a(?:c(a(?:)?b)?d)?b)?d)?b)?d)',
-          captureTransfers: new Map([[5, 12],['a', 12]]),
+          captureTransfers: new Map([[5, [12]]]),
           hiddenCaptures: [1, 2, 6, 10, 3, 4, 7, 8, 11, 12], // unsorted
         });
       });
 
       it('should transfer between captures following recursion', () => {
         expect(recursion(r`((2)\g<1&R=2>?) (3) (4)`, {
-          captureTransfers: new Map([[3, 4]]),
+          captureTransfers: new Map([[3, [4]]]),
         })).toEqual({
           pattern: '((2)(?:(2)(?:)?)?) (3) (4)',
-          captureTransfers: new Map([[4, 5]]),
+          captureTransfers: new Map([[4, [5]]]),
           hiddenCaptures: [3],
         });
       });

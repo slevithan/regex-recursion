@@ -12,13 +12,13 @@ const overlappingRecursionMsg = 'Cannot use multiple overlapping recursions';
 @param {string} pattern
 @param {{
   flags?: string;
-  captureTransfers?: Map<number | string, number>;
+  captureTransfers?: Map<number, Array<number>>;
   hiddenCaptures?: Array<number>;
   mode?: 'plugin' | 'external';
 }} [data]
 @returns {{
   pattern: string;
-  captureTransfers: Map<number | string, number>;
+  captureTransfers: Map<number, Array<number>>;
   hiddenCaptures: Array<number>;
 }}
 */
@@ -314,33 +314,36 @@ function incrementIfAtLeast(arr, threshold) {
 }
 
 /**
-@param {Map<number | string, number>} captureTransfers
+@param {Map<number, Array<number>>} captureTransfers
 @param {number} numCapturesPassed
 @param {string} left
 @param {number} reps
 @param {number} numCapturesAddedInExpansion
 @param {number} numAddedHiddenCapturesPreExpansion
-@returns {Map<number | string, number>}
+@returns {Map<number, Array<number>>}
 */
 function mapCaptureTransfers(captureTransfers, numCapturesPassed, left, reps, numCapturesAddedInExpansion, numAddedHiddenCapturesPreExpansion) {
   if (captureTransfers.size && numCapturesAddedInExpansion) {
     let numCapturesInLeft = 0;
     forEachUnescaped(left, captureDelim, () => numCapturesInLeft++, Context.DEFAULT);
-    const recursionDelimCaptureNum = numCapturesPassed - numCapturesInLeft + numAddedHiddenCapturesPreExpansion; // 0 for global
+    // 0 for global recursion
+    const recursionDelimCaptureNum = numCapturesPassed - numCapturesInLeft + numAddedHiddenCapturesPreExpansion;
     const newCaptureTransfers = new Map();
-    captureTransfers.forEach((/** @type {number} */ from, /** @type {number | string} */ to) => {
-      // `to` can be a group number or name
+    captureTransfers.forEach((from, to) => {
       if (to > (numCapturesPassed + numAddedHiddenCapturesPreExpansion)) {
         to += numCapturesAddedInExpansion;
       }
-      if (from > recursionDelimCaptureNum) {
-        from += (
-          // if capture is on left side of expanded group
-          from <= (recursionDelimCaptureNum + numCapturesInLeft) ?
-            numCapturesInLeft * reps :
-            numCapturesAddedInExpansion
-        );
-      }
+      from = from.map(f => {
+        if (f > recursionDelimCaptureNum) {
+          f += (
+            // if the capture is on the left side of the expanded subpattern
+            f <= (recursionDelimCaptureNum + numCapturesInLeft) ?
+              numCapturesInLeft * reps :
+              numCapturesAddedInExpansion
+          );
+        }
+        return f;
+      });
       newCaptureTransfers.set(to, from);
     });
     return newCaptureTransfers;
