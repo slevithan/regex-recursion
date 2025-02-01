@@ -35,7 +35,7 @@ const re = regex({plugins: [recursion]})`…`;
 
 ```html
 <script src="https://cdn.jsdelivr.net/npm/regex@6.0.1/dist/regex.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/regex-recursion@6.0.1/dist/regex-recursion.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/regex-recursion@6.0.2/dist/regex-recursion.min.js"></script>
 <script>
   const {regex} = Regex;
   const {recursion} = Regex.plugins;
