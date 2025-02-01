@@ -96,11 +96,11 @@ function recursion(pattern, data) {
         );
         captureTransfers = mapCaptureTransfers(
           captureTransfers,
-          numCapturesPassed,
           left,
           reps,
           addedHiddenCaptures.length,
-          0
+          0,
+          numCapturesPassed
         );
         // No need to parse further
         break;
@@ -149,11 +149,11 @@ function recursion(pattern, data) {
         );
         captureTransfers = mapCaptureTransfers(
           captureTransfers,
-          numCapturesPassed,
           groupContentsLeft,
           reps,
           addedHiddenCaptures.length - numAddedHiddenCapturesPreExpansion,
-          numAddedHiddenCapturesPreExpansion
+          numAddedHiddenCapturesPreExpansion,
+          numCapturesPassed
         );
         const pre = pattern.slice(0, startPos);
         const post = pattern.slice(startPos + groupContents.length);
@@ -315,14 +315,14 @@ function incrementIfAtLeast(arr, threshold) {
 
 /**
 @param {Map<number, Array<number>>} captureTransfers
-@param {number} numCapturesPassed
 @param {string} left
 @param {number} reps
 @param {number} numCapturesAddedInExpansion
 @param {number} numAddedHiddenCapturesPreExpansion
+@param {number} numCapturesPassed
 @returns {Map<number, Array<number>>}
 */
-function mapCaptureTransfers(captureTransfers, numCapturesPassed, left, reps, numCapturesAddedInExpansion, numAddedHiddenCapturesPreExpansion) {
+function mapCaptureTransfers(captureTransfers, left, reps, numCapturesAddedInExpansion, numAddedHiddenCapturesPreExpansion, numCapturesPassed) {
   if (captureTransfers.size && numCapturesAddedInExpansion) {
     let numCapturesInLeft = 0;
     forEachUnescaped(left, captureDelim, () => numCapturesInLeft++, Context.DEFAULT);
@@ -330,16 +330,16 @@ function mapCaptureTransfers(captureTransfers, numCapturesPassed, left, reps, nu
     const recursionDelimCaptureNum = numCapturesPassed - numCapturesInLeft + numAddedHiddenCapturesPreExpansion;
     const newCaptureTransfers = new Map();
     captureTransfers.forEach((from, to) => {
-      const newTo = to > (numCapturesPassed + numAddedHiddenCapturesPreExpansion) ?
-        to + numCapturesAddedInExpansion :
-        to;
+      const numCapturesInRight = (numCapturesAddedInExpansion - (numCapturesInLeft * reps)) / reps;
+      const numCapturesAddedInLeft = numCapturesInLeft * reps;
+      const newTo = to > (recursionDelimCaptureNum + numCapturesInLeft) ? to + numCapturesAddedInExpansion : to;
       const newFrom = [];
       for (const f of from) {
         // Before the recursed subpattern
         if (f <= recursionDelimCaptureNum) {
           newFrom.push(f);
         // After the recursed subpattern
-        } else if (f > (recursionDelimCaptureNum + numCapturesAddedInExpansion)) {
+        } else if (f > (recursionDelimCaptureNum + numCapturesInLeft + numCapturesInRight)) {
           newFrom.push(f + numCapturesAddedInExpansion);
         // Within the recursed subpattern, on the left of the recursion token
         } else if (f <= (recursionDelimCaptureNum + numCapturesInLeft)) {
@@ -348,8 +348,6 @@ function mapCaptureTransfers(captureTransfers, numCapturesPassed, left, reps, nu
           }
         // Within the recursed subpattern, on the right of the recursion token
         } else {
-          const numCapturesInRight = (numCapturesAddedInExpansion - (numCapturesInLeft * reps)) / reps;
-          const numCapturesAddedInLeft = numCapturesInLeft * reps;
           for (let i = 0; i <= reps; i++) {
             newFrom.push(f + numCapturesAddedInLeft + (numCapturesInRight * i));
           }

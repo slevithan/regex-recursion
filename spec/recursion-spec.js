@@ -188,7 +188,7 @@ describe('recursion', () => {
         })).toEqual({
           pattern: '()(a(?:a(?:)?()(b)())?()(b)())',
           captureTransfers: new Map([[1, [4, 7]]]),
-          hiddenCaptures: [7, 3, 4, 5], // unsorted
+          hiddenCaptures: jasmine.arrayWithExactContents([3, 4, 5, 7]),
         });
       });
 
@@ -203,7 +203,7 @@ describe('recursion', () => {
       });
 
       it('should transfer across multiple recursions', () => {
-        // Capture in left contents of recursions
+        // ## Capture in left contents of recursions
         expect(recursion(r`(?<r>(a)\g<r&R=2>?b) ((a)\g<3&R=2>?b)`, {
           captureTransfers: new Map([[1, [3]], [2, [4]]]),
         })).toEqual({
@@ -211,7 +211,8 @@ describe('recursion', () => {
           captureTransfers: new Map([[1, [4]], [2, [5, 6]]]),
           hiddenCaptures: [3, 6],
         });
-        // Capture in right contents of recursions
+
+        // ## Capture in right contents of recursions
         expect(recursion(r`(?<r>a\g<r&R=2>?(b)) (a\g<3&R=2>?(b))`, {
           captureTransfers: new Map([[1, [3]], [2, [4]]]),
         })).toEqual({
@@ -219,7 +220,17 @@ describe('recursion', () => {
           captureTransfers: new Map([[1, [4]], [3, [5, 6]]]),
           hiddenCaptures: [2, 5],
         });
-        // Capture in left and right contents of recursions
+        // Oniguruma: `(?<r>\g<r>?(.)) \g<r>`
+        expect(recursion(r`(?<r>\g<r&R=3>?(.)) (\g<3&R=3>?(.))`, {
+          captureTransfers: new Map([[1, [3]], [2, [4]]]),
+          hiddenCaptures: [3, 4],
+        })).toEqual({
+          pattern: '(?<r>(?:(?:(?:)?(.))?(.))?(.)) ((?:(?:(?:)?(.))?(.))?(.))',
+          captureTransfers: new Map([[1, [5]], [4, [6, 7, 8]]]),
+          hiddenCaptures: jasmine.arrayWithExactContents([2, 3, 5, 6, 7, 8]),
+        });
+
+        // ## Capture in left and right contents of recursions
         expect(recursion(r`(?<r>(a)\g<r&R=2>?(b)) ((a)\g<4&R=2>?(b))`, {
           captureTransfers: new Map([[1, [4]], [2, [5]], [3, [6]]]),
         })).toEqual({
@@ -227,14 +238,16 @@ describe('recursion', () => {
           captureTransfers: new Map([[1, [6]], [2, [7, 8]], [5, [9, 10]]]),
           hiddenCaptures: [3, 4, 8, 9],
         });
-        // Triple recursion with capture transfer to middle (Oniguruma: `\g<a> (?<a>a\g<b>?b) (?<b>c\g<a>?d)`)
+
+        // ## Triple recursion with capture transfer to middle
+        // Oniguruma: `\g<a> (?<a>a\g<b>?b) (?<b>c\g<a>?d)`
         expect(recursion(r`(a(c\g<1&R=2>?d)?b) (?<a>a(c\g<3&R=2>?d)?b) (?<b>c(a\g<5&R=2>?b)?d)`, {
           captureTransfers: new Map([[3, [6]]]),
           hiddenCaptures: [1, 2, 4, 6],
         })).toEqual({
           pattern: '(a(c(?:a(c(?:)?d)?b)?d)?b) (?<a>a(c(?:a(c(?:)?d)?b)?d)?b) (?<b>c(a(?:c(a(?:)?b)?d)?b)?d)',
           captureTransfers: new Map([[4, [8, 9]]]),
-          hiddenCaptures: [1, 2, 5, 8, 3, 6, 9], // unsorted
+          hiddenCaptures: jasmine.arrayWithExactContents([1, 2, 3, 5, 6, 8, 9]),
         });
         // Same as above but with depth 3
         expect(recursion(r`(a(c\g<1&R=3>?d)?b) (?<a>a(c\g<3&R=3>?d)?b) (?<b>c(a\g<5&R=3>?b)?d)`, {
@@ -243,7 +256,7 @@ describe('recursion', () => {
         })).toEqual({
           pattern: '(a(c(?:a(c(?:a(c(?:)?d)?b)?d)?b)?d)?b) (?<a>a(c(?:a(c(?:a(c(?:)?d)?b)?d)?b)?d)?b) (?<b>c(a(?:c(a(?:c(a(?:)?b)?d)?b)?d)?b)?d)',
           captureTransfers: new Map([[5, [10, 11, 12]]]),
-          hiddenCaptures: [1, 2, 6, 10, 3, 4, 7, 8, 11, 12], // unsorted
+          hiddenCaptures: jasmine.arrayWithExactContents([1, 2, 3, 4, 6, 7, 8, 10, 11, 12]),
         });
       });
 
