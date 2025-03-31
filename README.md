@@ -7,7 +7,7 @@
 This is an official plugin for [Regex+](https://github.com/slevithan/regex) that adds support for recursive matching up to a specified max depth *N*, where *N* can be between 2 and 100. Generated regexes are native JavaScript `RegExp` instances.
 
 > [!NOTE]
-> Regex flavors vary on whether they offer infinite or fixed-depth recursion. For example, recursion in Oniguruma uses a depth limit of 20, and doesn't allow changing this.
+> Regex flavors vary on whether they offer infinite or fixed-depth recursion. For example, recursion in Oniguruma uses a default depth limit of 20.
 
 Recursive matching is added to a regex via one of the following (the recursion depth limit is provided in place of *`N`*):
 
