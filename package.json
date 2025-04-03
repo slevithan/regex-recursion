@@ -18,10 +18,10 @@
     ".": {
       "types": "./types/index.d.ts",
       "import": "./src/index.js",
-      "require": "./dist/cjs/index.js"
+      "require": "./dist/cjs/index.cjs"
     }
   },
-  "main": "./dist/cjs/index.js",
+  "main": "./dist/cjs/index.cjs",
   "browser": "./dist/regex-recursion.min.js",
   "types": "./types/index.d.ts",
   "files": [
@@ -32,7 +32,7 @@
   "scripts": {
     "prebuild": "rm -rf dist/* types/*",
     "build": "pnpm run bundle:global && pnpm run bundle:cjs && pnpm run types",
-    "bundle:cjs": "esbuild src/index.js --format=cjs --bundle --outfile=dist/cjs/index.js",
+    "bundle:cjs": "esbuild src/index.js --format=cjs --bundle --outfile=dist/cjs/index.cjs",
     "bundle:global": "esbuild src/index.js --global-name=Regex.plugins --bundle --minify --sourcemap --outfile=dist/regex-recursion.min.js",
     "prepare": "pnpm test",
     "pretest": "pnpm run build",
