@@ -2,40 +2,43 @@
   "name": "regex-recursion",
   "version": "6.0.2",
   "description": "Recursive matching plugin for Regex+",
-  "author": "Steven Levithan",
-  "license": "MIT",
-  "type": "module",
-  "exports": {
-    ".": {
-      "types": "./types/index.d.ts",
-      "import": "./src/index.js"
-    }
-  },
-  "browser": "./dist/regex-recursion.min.js",
-  "types": "./types/index.d.ts",
-  "scripts": {
-    "bundle:global": "esbuild src/index.js --global-name=Regex.plugins --bundle --minify --sourcemap --outfile=dist/regex-recursion.min.js",
-    "types": "tsc src/index.js --rootDir src --declaration --allowJs --emitDeclarationOnly --outDir types",
-    "prebuild": "rm -rf dist/* types/*",
-    "build": "pnpm run bundle:global && pnpm run types",
-    "pretest": "pnpm run build",
-    "test": "jasmine",
-    "prepare": "pnpm test"
-  },
-  "files": [
-    "dist",
-    "src",
-    "types"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/slevithan/regex-recursion.git"
-  },
   "keywords": [
     "recursion",
     "regex",
     "regexp"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/slevithan/regex-recursion.git"
+  },
+  "license": "MIT",
+  "author": "Steven Levithan",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts",
+      "import": "./src/index.js",
+      "require": "./dist/cjs/index.js"
+    }
+  },
+  "main": "./dist/cjs/index.js",
+  "browser": "./dist/regex-recursion.min.js",
+  "types": "./types/index.d.ts",
+  "files": [
+    "dist",
+    "src",
+    "types"
+  ],
+  "scripts": {
+    "prebuild": "rm -rf dist/* types/*",
+    "build": "pnpm run bundle:global && pnpm run bundle:cjs && pnpm run types",
+    "bundle:cjs": "esbuild src/index.js --format=cjs --bundle --outfile=dist/cjs/index.js",
+    "bundle:global": "esbuild src/index.js --global-name=Regex.plugins --bundle --minify --sourcemap --outfile=dist/regex-recursion.min.js",
+    "prepare": "pnpm test",
+    "pretest": "pnpm run build",
+    "test": "jasmine",
+    "types": "tsc src/index.js --rootDir src --declaration --allowJs --emitDeclarationOnly --outDir types"
+  },
   "dependencies": {
     "regex-utilities": "^2.3.0"
   },

@@ -31,6 +31,17 @@ const re = regex({plugins: [recursion]})`…`;
 ```
 
 <details>
+  <summary>Using CommonJS require</summary>
+
+```js
+const {regex} = require('regex');
+const {recursion} = require('regex-recursion');
+
+const re = regex({plugins: [recursion]})`…`;
+```
+</details>
+
+<details>
   <summary>Using a global name (no import)</summary>
 
 ```html
