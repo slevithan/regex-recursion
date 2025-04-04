@@ -2,33 +2,24 @@
   "name": "regex-recursion",
   "version": "6.0.2",
   "description": "Recursive matching plugin for Regex+",
-  "keywords": [
-    "recursion",
-    "regex",
-    "regexp"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/slevithan/regex-recursion.git"
-  },
-  "license": "MIT",
   "author": "Steven Levithan",
+  "license": "MIT",
   "type": "module",
   "exports": {
     ".": {
-      "types": "./types/index.d.ts",
-      "import": "./src/index.js",
-      "require": "./dist/cjs/index.cjs"
+      "import": {
+        "types": "./types/index.d.ts",
+        "default": "./src/index.js"
+      },
+      "require": {
+        "types": "./types/index.d.cts",
+        "default": "./dist/cjs/index.cjs"
+      }
     }
   },
   "main": "./dist/cjs/index.cjs",
   "browser": "./dist/regex-recursion.min.js",
   "types": "./types/index.d.ts",
-  "files": [
-    "dist",
-    "src",
-    "types"
-  ],
   "scripts": {
     "prebuild": "rm -rf dist/* types/*",
     "build": "pnpm run bundle:global && pnpm run bundle:cjs && pnpm run types",
@@ -37,8 +28,22 @@
     "prepare": "pnpm test",
     "pretest": "pnpm run build",
     "test": "jasmine",
-    "types": "tsc src/index.js --rootDir src --declaration --allowJs --emitDeclarationOnly --outDir types"
+    "types": "tsc src/index.js --rootDir src --declaration --allowJs --emitDeclarationOnly --outDir types && cp types/index.d.ts types/index.d.cts"
   },
+  "files": [
+    "dist",
+    "src",
+    "types"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/slevithan/regex-recursion.git"
+  },
+  "keywords": [
+    "recursion",
+    "regex",
+    "regexp"
+  ],
   "dependencies": {
     "regex-utilities": "^2.3.0"
   },
