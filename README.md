@@ -31,6 +31,19 @@ const re = regex({plugins: [recursion]})`…`;
 ```
 
 <details>
+  <summary>Using CommonJS require</summary>
+
+```js
+const {regex} = require('regex');
+const {recursion} = require('regex-recursion-cjs');
+
+const re = regex({plugins: [recursion]})`…`;
+```
+
+> **Note:** [`regex-recursion-cjs`](https://www.npmjs.com/package/regex-recursion-cjs) is a third-party CommonJS wrapper for this library. It might not always be up to date with the latest version.
+</details>
+
+<details>
   <summary>Using a global name (no import)</summary>
 
 ```html
@@ -139,6 +152,21 @@ const palindromeWords = regex({flags: 'gi', plugins: [recursion]})`
 
 'Racecar, ABBA, and redivided'.match(palindromeWords);
 // → ['Racecar', 'ABBA']
+```
+
+## Direct use, without Regex+
+
+```js
+import {recursion} from 'regex-recursion';
+
+// Create a pattern that matches balanced parentheses
+const pattern = String.raw`\(([^\(\)]|(?R=10))*\)`;
+const processed = recursion(pattern);
+
+// The processed pattern can be used as a standard RegExp
+const re = new RegExp(processed.pattern);
+re.exec('foo (bar (baz) blah) end')[0];
+// → '(bar (baz) blah)'
 ```
 
 <!-- Badges -->
