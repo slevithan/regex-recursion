@@ -1,4 +1,4 @@
-# regex-recursion ♾️
+# regex-recursion 🪆
 
 [![npm version][npm-version-src]][npm-version-href]
 [![npm downloads][npm-downloads-src]][npm-downloads-href]
@@ -9,7 +9,7 @@ This is an official plugin for [Regex+](https://github.com/slevithan/regex) (it 
 > [!NOTE]
 > Regex flavors vary on whether they offer infinite or fixed-depth recursion. For example, recursion in Oniguruma uses a default depth limit of 20.
 
-Recursive matching is added to a regex via the following syntax. The recursion depth limit is provided in place of *`N`*.
+Recursive matching is added to a regex via the following syntax. The recursion depth limit is provided in place of *N*.
 
 - `(?R=N)` — Recursively match the entire regex at this position.
 - `\g<name&R=N>` or `\g<number&R=N>` — Recursively match the contents of the group referenced by name or number at this position. The `\g<…>` subroutine must be *within* the referenced group.
@@ -23,7 +23,7 @@ Details:
 
 - [Install and use](#️-install-and-use)
 - [Examples](#-examples)
-- [Direct use, without Regex+](#️-direct-use-without-regex)
+- [Standalone use](#️-standalone-use)
 
 ## 🕹️ Install and use
 
@@ -163,7 +163,9 @@ const palindromeWords = regex({flags: 'gi', plugins: [recursion]})`
 // → ['Racecar', 'ABBA']
 ```
 
-## ⛓️‍💥 Direct use, without Regex+
+## ⛓️‍💥 Standalone use
+
+Following is an example of using this library standalone, without Regex+.
 
 ```js
 import {recursion} from 'regex-recursion';
