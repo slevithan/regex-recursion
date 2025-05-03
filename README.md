@@ -1,4 +1,4 @@
-# regex-recursion
+# regex-recursion ♾️
 
 [![npm version][npm-version-src]][npm-version-href]
 [![npm downloads][npm-downloads-src]][npm-downloads-href]
@@ -12,12 +12,17 @@ This is an official plugin for [Regex+](https://github.com/slevithan/regex) that
 Recursive matching is added to a regex via one of the following (the recursion depth limit is provided in place of *`N`*):
 
 - `(?R=N)` — Recursively match the entire regex at this position.
-- `\g<name&R=N>` or `\g<number&R=N>` — Recursively match the contents of the group referenced by name or number at this position.
-  - The `\g` subroutine must be *within* the referenced group.
+- `\g<name&R=N>` or `\g<number&R=N>` — Recursively match the contents of the group referenced by name or number at this position. The `\g` subroutine must be *within* the referenced group.
 
-Multiple uses of recursion within the same pattern are allowed if they are non-overlapping. Named captures and backreferences are supported within recursion, and are independent per depth level. So e.g. `groups.name` on a match object is the value captured by group `name` at the top level of the recursion stack.
+Multiple uses of recursion within the same pattern are allowed if they are non-overlapping. Named captures and backreferences are supported within recursion, and are independent per depth level. So e.g. `match.groups.name` is the value captured by group `name` at the top level of the recursion stack.
 
-## Install and use
+## 📜 Contents
+
+- [Install and use](#️-install-and-use)
+- [Examples](#-examples)
+- [Direct use, without Regex+](#️-direct-use-without-regex)
+
+## 🕹️ Install and use
 
 ```sh
 npm install regex regex-recursion
@@ -58,7 +63,7 @@ const re = regex({plugins: [recursion]})`…`;
 ```
 </details>
 
-## Examples
+## 🪧 Examples
 
 ### Match an equal number of two different subpatterns
 
@@ -100,7 +105,7 @@ const parens = regex({flags: 'g', plugins: [recursion]})`
 ] */
 ```
 
-Following is an alternative that matches the same strings, but adds a nested quantifier. It then uses an atomic group to prevent this nested quantifier from creating the potential for [catastrophic backtracking](https://www.regular-expressions.info/catastrophic.html). Since the example above doesn't need a nested quantifier, this is not an improvement but merely an alternative that shows how to deal with the general problem of nested quantifiers with multiple ways to divide matches of the same strings.
+Following is an alternative that matches the same strings, but adds a nested quantifier. It then uses an atomic group to prevent the nested quantifier from creating the potential for [catastrophic backtracking](https://www.regular-expressions.info/catastrophic.html). Since the example above doesn't *need* a nested quantifier, this isn't an improvement but merely an alternative that shows how to deal with the general problem of nested quantifiers that create multiple ways to divide matches of the same strings.
 
 ```js
 const parens = regex({flags: 'g', plugins: [recursion]})`
@@ -154,13 +159,13 @@ const palindromeWords = regex({flags: 'gi', plugins: [recursion]})`
 // → ['Racecar', 'ABBA']
 ```
 
-## Direct use, without Regex+
+## ✂️ Direct use, without Regex+
 
 ```js
 import {recursion} from 'regex-recursion';
 
 // Create a pattern that matches balanced parentheses
-const pattern = String.raw`\(([^\(\)]|(?R=10))*\)`;
+const pattern = String.raw`\(([^\(\)]|(?R=20))*\)`;
 const processed = recursion(pattern);
 
 // The processed pattern can be used as a standard RegExp
@@ -168,6 +173,16 @@ const re = new RegExp(processed.pattern);
 re.exec('foo (bar (baz) blah) end')[0];
 // → '(bar (baz) blah)'
 ```
+
+Because the generated pattern is used without Regex+, you can't include extended syntax like insignificant whitespace, atomic groups, possessive quantifiers, or non-recursive subroutines.
+
+## 🏷️ About
+
+regex-recursion was created by [Steven Levithan](https://github.com/slevithan).
+
+If you want to support this project, I'd love your help by contributing improvements, sharing it with others, or [sponsoring](https://github.com/sponsors/slevithan) ongoing development.
+
+© 2024–present. MIT License.
 
 <!-- Badges -->
 
