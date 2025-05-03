@@ -4,7 +4,7 @@
 [![npm downloads][npm-downloads-src]][npm-downloads-href]
 [![bundle][bundle-src]][bundle-href]
 
-This is an official plugin for [Regex+](https://github.com/slevithan/regex) that adds support for recursive matching up to a specified max depth *N*, where *N* can be between 2 and 100. Generated regexes are native JavaScript `RegExp` instances.
+This is an official plugin for [Regex+](https://github.com/slevithan/regex) that adds support for recursive matching up to a specified max depth *N*, where *N* can be between 2 and 100. It can also be used standalone ([example](#️-direct-use-without-regex)). Generated regexes are native JavaScript `RegExp` instances.
 
 > [!NOTE]
 > Regex flavors vary on whether they offer infinite or fixed-depth recursion. For example, recursion in Oniguruma uses a default depth limit of 20.
@@ -178,7 +178,7 @@ re.exec('foo (bar (baz) blah) end')[0];
 // → '(bar (baz) blah)'
 ```
 
-Because the generated pattern is used without Regex+, you can't include Regex+'s extended syntax like insignificant whitespace, atomic groups, possessive quantifiers, or non-recursive subroutines.
+Because the generated pattern is used without Regex+, you can't include Regex+'s extended syntax like insignificant whitespace, atomic groups, possessive quantifiers, and non-recursive subroutines.
 
 ## 🏷️ About
 
