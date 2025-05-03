@@ -4,7 +4,7 @@
 [![npm downloads][npm-downloads-src]][npm-downloads-href]
 [![bundle][bundle-src]][bundle-href]
 
-This is an official plugin for [Regex+](https://github.com/slevithan/regex) that adds support for recursive matching up to a specified max depth *N*, where *N* can be between 2 and 100. It can also be used standalone ([example](#️-direct-use-without-regex)). Generated regexes are native JavaScript `RegExp` instances.
+This is an official plugin for [Regex+](https://github.com/slevithan/regex) (it can also be used standalone) that adds support for recursive matching up to a specified max depth *N*, where *N* can be between 2 and 100. Generated regexes are native JavaScript `RegExp` instances.
 
 > [!NOTE]
 > Regex flavors vary on whether they offer infinite or fixed-depth recursion. For example, recursion in Oniguruma uses a default depth limit of 20.
@@ -17,7 +17,7 @@ Recursive matching is added to a regex via the following syntax. The recursion d
 Details:
 
 - Multiple uses of recursion within the same pattern are supported if they're non-overlapping.
-- Named captures and backreferences are supported within recursion, and are independent per depth level. Given a result named `match`, `match.groups.name` is the value captured by group `name` at the top level of the recursion stack.
+- Named captures and backreferences are supported within recursion and are independent per depth level. A match result's `groups.name` property holds the value captured by group `name` at the top level of the recursion stack. Subpatterns `groups.name_$2`, etc. are available for each level of nested subpattern matches.
 
 ## 📜 Contents
 
@@ -178,7 +178,7 @@ re.exec('foo (bar (baz) blah) end')[0];
 // → '(bar (baz) blah)'
 ```
 
-Because the generated pattern is used without Regex+, you can't include Regex+'s extended syntax like insignificant whitespace, atomic groups, possessive quantifiers, and non-recursive subroutines.
+All ES2025 regex syntax is supported, but because the generated pattern is used without Regex+, you can't include Regex+'s extended syntax like insignificant whitespace, atomic groups, possessive quantifiers, and non-recursive subroutines.
 
 ## 🏷️ About
 
