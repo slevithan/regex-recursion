@@ -9,12 +9,15 @@ This is an official plugin for [Regex+](https://github.com/slevithan/regex) that
 > [!NOTE]
 > Regex flavors vary on whether they offer infinite or fixed-depth recursion. For example, recursion in Oniguruma uses a default depth limit of 20.
 
-Recursive matching is added to a regex via one of the following (the recursion depth limit is provided in place of *`N`*):
+Recursive matching is added to a regex via the following syntax. The recursion depth limit is provided in place of *`N`*.
 
 - `(?R=N)` — Recursively match the entire regex at this position.
-- `\g<name&R=N>` or `\g<number&R=N>` — Recursively match the contents of the group referenced by name or number at this position. The `\g` subroutine must be *within* the referenced group.
+- `\g<name&R=N>` or `\g<number&R=N>` — Recursively match the contents of the group referenced by name or number at this position. The `\g<…>` subroutine must be *within* the referenced group.
 
-Multiple uses of recursion within the same pattern are allowed if they are non-overlapping. Named captures and backreferences are supported within recursion, and are independent per depth level. So e.g. `match.groups.name` is the value captured by group `name` at the top level of the recursion stack.
+Details:
+
+- Multiple uses of recursion within the same pattern are supported if they're non-overlapping.
+- Named captures and backreferences are supported within recursion, and are independent per depth level. Given a result named `match`, `match.groups.name` is the value captured by group `name` at the top level of the recursion stack.
 
 ## 📜 Contents
 
@@ -45,11 +48,11 @@ const {recursion} = require('regex-recursion-cjs');
 const re = regex({plugins: [recursion]})`…`;
 ```
 
-> **Note:** [`regex-recursion-cjs`](https://www.npmjs.com/package/regex-recursion-cjs) is a third-party CommonJS wrapper for this library. It might not always be up to date with the latest version.
+> **Note:** [*regex-recursion-cjs*](https://www.npmjs.com/package/regex-recursion-cjs) is a third-party CommonJS wrapper for this library. It might not always be up to date with the latest version.
 </details>
 
 <details>
-  <summary>Using a global name (no import)</summary>
+  <summary>Using a global name in browsers</summary>
 
 ```html
 <script src="https://cdn.jsdelivr.net/npm/regex@6.0.1/dist/regex.min.js"></script>
@@ -108,11 +111,12 @@ const parens = regex({flags: 'g', plugins: [recursion]})`
 Following is an alternative that matches the same strings, but adds a nested quantifier. It then uses an atomic group to prevent the nested quantifier from creating the potential for [catastrophic backtracking](https://www.regular-expressions.info/catastrophic.html). Since the example above doesn't *need* a nested quantifier, this isn't an improvement but merely an alternative that shows how to deal with the general problem of nested quantifiers that create multiple ways to divide matches of the same strings.
 
 ```js
+// With an atomic group
 const parens = regex({flags: 'g', plugins: [recursion]})`
   \( ((?> [^\(\)]+) | (?R=20))* \)
 `;
 
-// Or with a possessive quantifier
+// Same thing, but with a possessive quantifier
 const parens = regex({flags: 'g', plugins: [recursion]})`
   \( ([^\(\)]++ | (?R=20))* \)
 `;
@@ -120,9 +124,9 @@ const parens = regex({flags: 'g', plugins: [recursion]})`
 
 The first example above matches sequences of non-parentheses in one step with the nested `+` quantifier, and avoids backtracking into these sequences by wrapping it with an atomic group `(?>…)`. Given that what the nested quantifier `+` matches overlaps with what the outer group can match with its `*` quantifier, the atomic group is important here. It avoids exponential backtracking when matching long strings with unbalanced parentheses.
 
-In cases where you're you're repeating a single token within an atomic group, possessive quantifiers provide syntax sugar.
+In cases where you're you're repeating a single token within an atomic group, possessive quantifiers (in this case, `++`) provide syntax sugar for the same behavior.
 
-Atomic groups and possessive quantifiers are provided by the base Regex+ library.
+Atomic groups and possessive quantifiers are [provided](https://github.com/slevithan/regex#atomic-groups) by the base Regex+ library.
 
 ### Match palindromes
 
@@ -159,7 +163,7 @@ const palindromeWords = regex({flags: 'gi', plugins: [recursion]})`
 // → ['Racecar', 'ABBA']
 ```
 
-## ✂️ Direct use, without Regex+
+## ⛓️‍💥 Direct use, without Regex+
 
 ```js
 import {recursion} from 'regex-recursion';
@@ -174,11 +178,11 @@ re.exec('foo (bar (baz) blah) end')[0];
 // → '(bar (baz) blah)'
 ```
 
-Because the generated pattern is used without Regex+, you can't include extended syntax like insignificant whitespace, atomic groups, possessive quantifiers, or non-recursive subroutines.
+Because the generated pattern is used without Regex+, you can't include Regex+'s extended syntax like insignificant whitespace, atomic groups, possessive quantifiers, or non-recursive subroutines.
 
 ## 🏷️ About
 
-regex-recursion was created by [Steven Levithan](https://github.com/slevithan).
+Created by [Steven Levithan](https://github.com/slevithan).
 
 If you want to support this project, I'd love your help by contributing improvements, sharing it with others, or [sponsoring](https://github.com/sponsors/slevithan) ongoing development.
 
