@@ -124,7 +124,7 @@ const parens = regex({flags: 'g', plugins: [recursion]})`
 
 The first example above matches sequences of non-parentheses in one step with the nested `+` quantifier, and avoids backtracking into these sequences by wrapping it with an atomic group `(?>…)`. Given that what the nested quantifier `+` matches overlaps with what the outer group can match with its `*` quantifier, the atomic group is important here. It avoids exponential backtracking when matching long strings with unbalanced parentheses.
 
-In cases where you're you're repeating a single token within an atomic group, possessive quantifiers (in this case, `++`) provide syntax sugar for the same behavior.
+In cases where you're repeating a single token within an atomic group, possessive quantifiers (in this case, `++`) provide syntax sugar for the same behavior.
 
 Atomic groups and possessive quantifiers are [provided](https://github.com/slevithan/regex#atomic-groups) by the base Regex+ library.
 
